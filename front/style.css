@@ -1,0 +1,84 @@
+@media (max-width: 1400px) {
+  .mainBox {
+    flex: 0 0 75%;
+    max-width: 65%;
+    height: auto;
+  }
+}
+
+@media (max-width: 980px) {
+  .mainBox {
+    flex: 0 0 60%;
+    max-width: 95%;
+    height: auto;
+  }
+}
+
+@media (max-width: 650px) {
+  .mainBox {
+    flex: 0 0 75%;
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.mainBox {
+  flex: 0 0 75%;
+  max-width: 95%;
+  height: auto;
+  background-color: rgba(136, 178, 230, 0.191);
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 auto;
+  border-radius: 10px;
+  justify-content: space-around;
+  font-size: 16px;
+}
+
+.orderHead {
+  margin-top: 15px;
+  background-color: rgb(255, 255, 255);
+  height: 35px;
+  width: 70%;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-around;
+  padding-top: 15px;
+}
+
+.orderPage {
+  margin-top: 50px;
+  margin-bottom: 15px;
+  border-radius: 5px;
+  background-color: orange;
+  height: 350px;
+  width: 70%;
+  display: flex;
+  flex-direction: column;
+}
+
+.orderInfo {
+  margin: 15px auto;
+  background-color: rgb(119, 212, 255);
+  height: 35px;
+  width: 70%;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.452);
+  display: flex;
+  justify-content: space-around;
+  padding-top: 15px;
+}
+
+.orderSum {
+  margin: auto;
+  margin-bottom: 15px;
+  background-color: rgb(119, 212, 255);
+  height: 35px;
+  width: 70%;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.452);
+  display: flex;
+  justify-content: space-around;
+  padding-top: 15px;
+}
