@@ -16,7 +16,6 @@ button_cancel = InlineKeyboardButton('Отмена', callback_data='cancel')
 cancelButton = ReplyKeyboardMarkup(resize_keyboard=True).add(button_cancel)
 
 
-
 @dp.message_handler(text=['Меню'])
 async def main_menu(message: types.Message):
     await bot.send_message(message.from_user.id, reply_markup=kb1, text='Выберите пункт меню 👇🏻')
@@ -77,8 +76,7 @@ def konsult():
 
             kb_chat = InlineKeyboardMarkup()
             kb_chat.add(InlineKeyboardButton(text="Перейти в чат",
-                                                 url=f"t.me/{message.from_user.username}"))
-
+                                             url=f"t.me/{message.from_user.username}"))
 
             # Отправляем сообщение на заданный вами чат или группу в Telegram
             await bot.send_message(CHANNEL_ID, text, reply_markup=kb_chat)

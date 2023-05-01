@@ -40,7 +40,6 @@ konsult()
 register()
 
 
-
 @dp.callback_query_handler(text_contains='', state='*')
 async def all_message(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state()

@@ -7,6 +7,7 @@ from config import token
 
 storage = MemoryStorage()
 
+
 # задаем уровень логирования
 logging.basicConfig(level=logging.INFO)
 loop = asyncio.new_event_loop()

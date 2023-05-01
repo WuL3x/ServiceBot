@@ -56,7 +56,6 @@ def register():
         await main_menu(message)
         await state.finish()
 
-
     @dp.callback_query_handler(lambda c: c.data.startswith('device:'), state=RepairForm.device)
     async def process_device(callback: types.CallbackQuery, state: FSMContext):
         data = callback.data.split(':')

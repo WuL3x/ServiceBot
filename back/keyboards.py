@@ -6,7 +6,6 @@ button_menu = InlineKeyboardButton(text='Меню', callback_data='menu')
 # bt_kons = InlineKeyboardButton(text="Техподдержка", callback_data='konsult')
 bt_sec = ReplyKeyboardMarkup(resize_keyboard=True).add(button_menu)
 
-
 kb1 = InlineKeyboardMarkup()
 kb1.insert(InlineKeyboardButton(text="Оставить заявку на ремонт", callback_data='register'))
 kb1.insert(InlineKeyboardButton(text="Техподдержка", callback_data='konsult'))
