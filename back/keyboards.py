@@ -25,8 +25,9 @@ bt_diag = InlineKeyboardButton(text='Диагностика', callback_data='dia
 bt_upgrade = InlineKeyboardButton(text='Апгрейд ПК', callback_data='upgrade')
 bt_virus = InlineKeyboardButton(text='Удаление вирусов', callback_data='virus')
 bt_tup = InlineKeyboardButton(text='Если просто не включается компьютер?', callback_data='tup')
+bt_sborka = InlineKeyboardButton(text='Сборка', callback_data='sborka')
 bt_menu = InlineKeyboardButton(text='Назад в главное меню', callback_data='back_menu')
-bt_kat = ReplyKeyboardMarkup(resize_keyboard=True).add(bt_remont).insert(bt_virus).insert(bt_upgrade).insert(bt_diag)\
+bt_kat = ReplyKeyboardMarkup(resize_keyboard=True).add(bt_remont).row(bt_sborka).insert(bt_virus).insert(bt_upgrade).insert(bt_diag)\
     .insert(bt_tup).add(bt_menu)
 
 kb_dev = InlineKeyboardMarkup()

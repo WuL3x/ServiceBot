@@ -3,12 +3,13 @@ import time
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import InputFile, WebAppInfo, ReplyKeyboardRemove
+from aiogram.types import InputFile, WebAppInfo, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.exceptions import CantInitiateConversation
 
 from back.config import CHANNEL_ID
 from back.form_kons import konsult
 from back.form_reg import register
+from back.form_upgrade import upgrade
 
 # from form_reg import register
 from keyboards import bt_sec, kb1, bt_kat
@@ -38,7 +39,7 @@ async def back_to_menu(message: types.Message):
 
 konsult()
 register()
-
+upgrade()
 
 @dp.callback_query_handler(text_contains='', state='*')
 async def all_message(callback: types.CallbackQuery, state: FSMContext):
@@ -59,6 +60,34 @@ async def all_message(callback: types.CallbackQuery, state: FSMContext):
                                  reply_markup=bt_sec)
             time.sleep(1)
             await main_menu(callback)
+
+
+@dp.message_handler(text_contains='', state='*')
+async def kat_info(message: types.Message, state: FSMContext):
+    await state.set_state()
+    await state.finish()
+    code = message.text
+    bt_reg = InlineKeyboardMarkup()
+    bt_reg.add(InlineKeyboardButton(text='Оставить заявку на ремонт', callback_data='register'))
+    bt_uprgade = InlineKeyboardMarkup()
+    bt_uprgade.add(InlineKeyboardButton(text='Осавьте заявку на апгрейд', callback_data='upgrade'))
+    match code:
+        case 'Ремонт':
+            await bot.send_message(message.from_user.id, text='''Ну это категория ремонта\nтут описание ремнтных 
+работ и прочая хуйня\nПо кнопке ниже Вы можете оставить заявку на ремонт''', reply_markup=bt_reg)
+
+        case 'Диагностика':
+            await bot.send_message(message.from_user.id, text='Все проверим и скажем что не так', reply_markup=bt_reg)
+        case 'Апгрейд ПК':
+            await bot.send_message(message.from_user.id, text='Ну тут нужно чекать в ДНС цены.', reply_markup=bt_uprgade)
+        case 'Удаление вирусов':
+            await bot.send_message(message.from_user.id, text='нахуй не нужны вам эти вирусы поганые!\nМы это, антисептик ваш.')
+        case 'Если просто не включается компьютер?':
+            await bot.send_message(message.from_user.id, text='А может ну его... Компы эти сложные, а?\n и кстати, не пишите сюда больше')
+            await bot.send_message(message.from_user.id, text='Бан по причине тупоголовый')
+        case 'Сборка':
+            await bot.send_message(message.from_user.id, text='Оставьте заявку на сборку пк. Если нужны дополнительные комплектующие, сообщите.')
+
 
 
 @dp.callback_query_handler(text='register')
@@ -86,6 +115,9 @@ async def admin_reply(message: types.Message):
     # if not message.reply_to_message.text.__contains__(", "):
     #     return
 
+    bt_info=InlineKeyboardMarkup()
+    bt_info.add(InlineKeyboardButton(text='Кнопка для вопросов', callback_data='info'))
+
     # Парсим id из сообщения
     head = message.reply_to_message.text.split('\n')[0].split()[0]
     if head == 'Обращение':
@@ -94,7 +126,8 @@ async def admin_reply(message: types.Message):
         text = f'"{feedback}"'
         try:
             await bot.send_message(uid, f'''{text}
-⚠Ответ от администратора: 👇🏻\n''' + message.text)
+⚠Ответ от администратора: 👇🏻\n{message.text}
+В случае возникновения вопросов или уточнений, напишите по кнопке ниже''',reply_markup=bt_info)
         except CantInitiateConversation:
             await bot.reply("Ошибка\n")
     elif head == 'Заявка':
@@ -103,6 +136,14 @@ async def admin_reply(message: types.Message):
         text = f'"{feedback}"'
         try:
             await bot.send_message(uid, f'''Ремонт {text}
-⚠Ответ от администратора: 👇🏻\n''' + message.text)
+⚠Ответ от администратора: 👇🏻\n{message.text}
+В случае возникновения вопросов или уточнений, напишите по кнопке ниже''',reply_markup=bt_info)
+        except CantInitiateConversation:
+            await bot.reply("Ошибка\n")
+    elif head == 'Модернизация':
+        uid = message.reply_to_message.text.split('\n')[2].split()[1]
+        try:
+            await bot.send_message(uid, f'''Ваша заявка принята.
+В случае возникновения вопросов или уточнений, напишите по кнопке ниже''',reply_markup=bt_info)
         except CantInitiateConversation:
             await bot.reply("Ошибка\n")
