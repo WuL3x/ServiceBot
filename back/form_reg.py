@@ -15,6 +15,7 @@ from main import bot, dp
 button_cancel = types.InlineKeyboardButton('Отмена', callback_data='cancel')
 cancelButton = types.ReplyKeyboardMarkup(resize_keyboard=True).add(button_cancel)
 
+
 @dp.callback_query_handler(text=['Меню'])
 async def main_menu(callback: types.callback_query):
     await bot.send_message(callback.from_user.id, reply_markup=kb1, text='Выберите пункт меню 👇🏻')
@@ -22,13 +23,26 @@ async def main_menu(callback: types.callback_query):
 
 def register():
     class RepairForm(StatesGroup):
-
         device = State()  # выбор типа устройства
         dev_name = State()
         issue = State()
         name = State()
         phone = State()
         confirm = State()
+
+
+    @dp.callback_query_handler(text ='register')
+    async def register_order(callback: types.callback_query, state: FSMContext):
+        await bot.send_message(callback.from_user.id,
+                               f'''{callback.from_user.username}, мы просим Вас указывать полную информацию об 
+устройстве и описывать проблему максимально развернуто''',
+                               reply_markup=cancelButton)
+        async with state.proxy() as data:
+            data['user_name'] = callback.from_user.username
+            data['id_order'] = str(uuid.uuid4().int)[:6]
+        await bot.send_message(callback.from_user.id, 'Выберите тип устройства:', reply_markup=kb_dev)
+        await RepairForm.device.set()
+
 
     @dp.message_handler(state='*', commands='cancel')
     @dp.message_handler(Text(equals='Отмена', ignore_case=True), state='*')
@@ -42,16 +56,6 @@ def register():
         await main_menu(message)
         await state.finish()
 
-    @dp.callback_query_handler(lambda c: c.data == 'register', state="*")
-    async def register_order(callback: types.CallbackQuery, state: FSMContext):
-        await bot.send_message(callback.from_user.id,
-                               f'{callback.from_user.username}, Укажите тип и название устройства.',
-                               reply_markup=cancelButton)
-        await bot.send_message(callback.from_user.id, 'Выберите тип устройства:', reply_markup=kb_dev)
-        async with state.proxy() as data:
-            data['user_name'] = callback.from_user.username
-            data['id_order'] = str(uuid.uuid4().int)[:6]
-        await RepairForm.device.set()
 
     @dp.callback_query_handler(lambda c: c.data.startswith('device:'), state=RepairForm.device)
     async def process_device(callback: types.CallbackQuery, state: FSMContext):
@@ -62,7 +66,7 @@ def register():
 
         if device == 'Компьютер':
             await bot.send_message(callback.from_user.id,
-                                   "Пожалуйста, укажите что произошло с ПК..",
+                                   "Пожалуйста, укажите что произошло с ПК.",
                                    reply_markup=cancelButton)
             await RepairForm.issue.set()
 
@@ -73,12 +77,14 @@ def register():
                                    reply_markup=cancelButton)
             await RepairForm.dev_name.set()
 
+
     @dp.message_handler(state=RepairForm.dev_name)
     async def process_dev_name(message: types.Message, state: FSMContext):
         async with state.proxy() as data:
             data['dev_name'] = message.text
         await bot.send_message(message.from_user.id, "Пожалуйста, опишите проблему.", reply_markup=cancelButton)
         await RepairForm.issue.set()
+
 
     @dp.message_handler(state=RepairForm.issue)
     async def process_issue(message: types.Message, state: FSMContext):
@@ -88,6 +94,7 @@ def register():
         await message.reply("Введите Ваше имя.", reply=False, reply_markup=cancelButton)
         await RepairForm.name.set()
 
+
     @dp.message_handler(state=RepairForm.name)
     async def process_name(message: types.Message, state: FSMContext):
         async with state.proxy() as data:
@@ -95,6 +102,7 @@ def register():
 
         await message.reply("Введите Ваш номер телефона.", reply=False, reply_markup=cancelButton)
         await RepairForm.phone.set()
+
 
     @dp.message_handler(state=RepairForm.phone)
     async def process_phone(message: types.Message, state: FSMContext):
@@ -120,11 +128,14 @@ def register():
                                    reply_markup=kb_con)
         await RepairForm.confirm.set()
 
+
     @dp.callback_query_handler(state=RepairForm.confirm)
     async def process_confirm(callback: types.CallbackQuery, state: FSMContext):
         # обрабатываем ответ на кнопку
         if callback.data.split(':')[1] == 'verno':
-            await bot.send_message(callback.from_user.id, "Спасибо за заявку! В скором времени с вами свяжется менеджер")
+            await bot.send_message(callback.from_user.id,
+                                   "Спасибо за заявку! В скором времени с вами свяжется менеджер",
+                                   reply_markup=bt_sec)
             async with state.proxy() as data:
                 text = f"Заявка на ремонт {data['device']}а:\n"
                 text += f"TG user name: @{data['user_name']}\n"
@@ -156,4 +167,3 @@ def register():
         time.sleep(1)
         await main_menu(callback)
         await state.finish()
-

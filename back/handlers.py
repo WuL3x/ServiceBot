@@ -2,15 +2,18 @@ import re
 import time
 
 from aiogram import types
-from aiogram.types import InputFile, WebAppInfo
+from aiogram.dispatcher import FSMContext
+from aiogram.types import InputFile, WebAppInfo, ReplyKeyboardRemove
 from aiogram.utils.exceptions import CantInitiateConversation
 
 from back.config import CHANNEL_ID
 from back.form_kons import konsult
-from form_reg import register
-from keyboards import bt_sec, kb1
+from back.form_reg import register
+
+# from form_reg import register
+from keyboards import bt_sec, kb1, bt_kat
 from main import bot, dp
-from texts import place, comp
+from texts import place, comp, remont
 
 
 @dp.message_handler(commands=['start'])
@@ -18,31 +21,55 @@ async def process_start_command(message: types.Message):
     await message.answer(
         f'''Привет, {message.from_user.username}!\nЯ бот, с помощью которого можно узнать статус своего заказа''',
         reply_markup=bt_sec)
+    time.sleep(1)
     await main_menu(message)
 
 
-@dp.message_handler(text=['Меню'])
+@dp.callback_query_handler(text=['menu'])
 async def main_menu(callback: types.callback_query):
-    await bot.send_message(callback.from_user.id, reply_markup=kb1, text='Выберите пункт меню 👇🏻')
+    await bot.send_message(callback.from_user.id, text='Выберите пункт меню 👇🏻', reply_markup=kb1)
 
 
-@dp.callback_query_handler(text=['place'])
-async def handle_place(callback: types.CallbackQuery):
-    await bot.send_photo(callback.from_user.id, InputFile("Photo/map.PNG"), caption=place, reply_markup=bt_sec)
-    await bot.send_location(callback.from_user.id, 55.544813, 37.516697, 'Сервиго', 'Москва')
-    time.sleep(1)
-    await main_menu(callback)
+@dp.message_handler(lambda message: message.text == 'Назад в главное меню', state='*')
+async def back_to_menu(message: types.Message):
+    await bot.send_message(message.chat.id, 'Вы вернулись в главное меню', reply_markup=bt_sec)
+    await bot.send_message(message.chat.id, 'Выберите пункт меню 👇🏻', reply_markup=kb1)
 
-
-
-@dp.callback_query_handler(text=['company'])
-async def company(callback: types.CallbackQuery):
-    await bot.send_photo(callback.from_user.id, InputFile("Photo/gorshok.jpg"), caption=comp, reply_markup=bt_sec)
-    time.sleep(1)
-    await main_menu(callback)
 
 konsult()
 register()
+
+
+
+@dp.callback_query_handler(text_contains='', state='*')
+async def all_message(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state()
+    await state.finish()
+    code = callback.data
+    match code:
+        case 'katalog':
+            await bot.send_photo(callback.from_user.id, InputFile("Photo/remont.png"), caption=remont,
+                                 reply_markup=bt_kat)
+        case 'place':
+            await bot.send_photo(callback.from_user.id, InputFile("Photo/map.PNG"), caption=place, reply_markup=bt_sec)
+            await bot.send_location(callback.from_user.id, 55.544813, 37.516697, 'Сервиго', 'Москва')
+            time.sleep(1)
+            await main_menu(callback)
+        case 'company':
+            await bot.send_photo(callback.from_user.id, InputFile("Photo/gorshok.jpg"), caption=comp,
+                                 reply_markup=bt_sec)
+            time.sleep(1)
+            await main_menu(callback)
+
+
+@dp.callback_query_handler(text='register')
+async def my_callback_handler(callback_query: types.CallbackQuery):
+    try:
+        print("Button clicked!")
+        await bot.answer_callback_query(callback_query.id)
+        await bot.send_message(callback_query.from_user.id, "Button clicked!")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
 @dp.message_handler(chat_id=CHANNEL_ID)
@@ -76,10 +103,7 @@ async def admin_reply(message: types.Message):
         feedback = message.reply_to_message.text.split('\n')[0].split()[3].rstrip(':')
         text = f'"{feedback}"'
         try:
-            await bot.send_message(uid,f'''Ремонт {text}
+            await bot.send_message(uid, f'''Ремонт {text}
 ⚠Ответ от администратора: 👇🏻\n''' + message.text)
         except CantInitiateConversation:
             await bot.reply("Ошибка\n")
-
-
-
