@@ -30,8 +30,8 @@ def register():
         phone = State()
         confirm = State()
 
-
-    @dp.callback_query_handler(text ='register')
+    @dp.callback_query_handler(text='register')
+    @dp.message_handler(text ='Оставить заявку на ремонт')
     async def register_order(callback: types.callback_query, state: FSMContext):
         await bot.send_message(callback.from_user.id,
                                f'''{callback.from_user.username}, мы просим Вас указывать полную информацию об 
@@ -143,7 +143,7 @@ def register():
                 if data['device'] != 'Компьютер':
                     text += f"Название устройства: {data['dev_name']}\n"
                 text += f"Описание проблемы: {data['issue']}\n"
-                text += f"Имя: {data['name']}\n"
+                text += f"Фамилия и имя: {data['name']}\n"
                 text += f"Телефон: {data['phone']}\n"
             kb_chat = InlineKeyboardMarkup()
             kb_chat.add(InlineKeyboardButton(text="Перейти в чат",
@@ -160,9 +160,4 @@ def register():
             async with state.proxy() as data:
                 data['user_name'] = callback.from_user.first_name
                 data['id_order'] = data['id_order']
-                kb1 = types.InlineKeyboardMarkup()
-                kb1.insert(types.InlineKeyboardButton(text="Оставить заявку", callback_data="register"))
-
-        time.sleep(1)
-        await main_menu(callback)
         await state.finish()

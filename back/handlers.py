@@ -3,6 +3,8 @@ import time
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters import state
+from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InputFile, WebAppInfo, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.exceptions import CantInitiateConversation
 
@@ -14,16 +16,17 @@ from back.form_upgrade import upgrade
 # from form_reg import register
 from keyboards import bt_sec, kb1, bt_kat
 from main import bot, dp
-from texts import place, comp, remont
+from texts import place, comp, virus, diag, uslugi, remont, start
 
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     await message.answer(
-        f'''Привет, {message.from_user.username}!\nЯ бот, с помощью которого можно узнать статус своего заказа''',
-        reply_markup=bt_sec)
+        f'''Привет, {message.from_user.username}!🖐''')
+    await bot.send_photo(message.from_user.id, InputFile('Photo/logo.png'), caption=start, reply_markup=bt_sec)
     time.sleep(1)
     await main_menu(message)
+
 
 
 @dp.callback_query_handler(text=['menu'])
@@ -41,6 +44,67 @@ konsult()
 register()
 upgrade()
 
+@dp.message_handler(chat_id=CHANNEL_ID)
+async def admin_reply(message: types.Message):
+    bt_info = InlineKeyboardMarkup()
+    bt_info.add(InlineKeyboardButton(text='Кнопка для вопросов', callback_data='info'))
+    # Парсим id из сообщения
+    head = message.reply_to_message.text.split('\n')[0].split()[0]
+    if head == 'Обращение':
+        type = message.reply_to_message.text.split('\n')[3].split(':')[1][1:]
+        if type != 'Отзыв':
+            uid = message.reply_to_message.text.split('\n')[2].split()[1]
+            feedback = message.reply_to_message.text.split('\n')[5]
+            text = f'"{feedback}"'
+            await bot.send_message(uid, f'''{text}
+Ответ от администратора: 👇🏻\n{message.text}''', reply_markup=bt_info)
+        elif type == 'Отзыв':
+            await bot.send_message(CHANNEL_ID, text='Это отзыв, еблан!')
+
+
+    elif head == 'Заявка':
+        uid = message.reply_to_message.text.split('\n')[2].split()[1]
+        feedback = message.reply_to_message.text.split('\n')[0].split()[3].rstrip(':')
+        text = f'"{feedback}"'
+        await bot.send_message(uid, f'''Ремонт {text}
+Ответ от администратора: 👇🏻\n{message.text}''', reply_markup=bt_info)
+
+    elif head == 'Модернизация':
+        uid = message.reply_to_message.text.split('\n')[2].split()[1]
+        await bot.send_message(uid, f'''Ваша заявка принята.''', reply_markup=bt_info)
+
+
+
+class Form_vopros(StatesGroup):
+    wait_vopros = State()
+    wait_otvet = State()
+
+
+@dp.callback_query_handler(text='info')
+async def voprosiki(callback: types.CallbackQuery):
+    await bot.send_message(callback.from_user.id, text='Введите ваш вопрос:')
+    await Form_vopros.wait_vopros.set()
+
+
+@dp.message_handler(state=Form_vopros.wait_vopros)
+async def get_vopros(message: types.Message, state: FSMContext):
+    vopros = message.text
+    await state.update_data(question=vopros)  # сохраняем вопрос в состояние
+    await bot.send_message(CHANNEL_ID, text=f'Вопрос от пользователя @{message.from_user.username}:\n{vopros}')
+    await bot.send_message(message.from_user.id, text='Ваш вопрос отправлен администратору, ожидайте!')
+    await Form_vopros.wait_otvet.set()  # переходим в состояние ожидания ответа от администратора
+
+
+@dp.message_handler(state=Form_vopros.wait_otvet)
+async def process_answer(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    question = data.get('question')
+    await bot.send_message(question.from_user.id, text=f'Ответ на ваш вопрос: {message.text}')
+    await bot.send_message(CHANNEL_ID,
+                           text=f'Ответ на вопрос от пользователя {question.from_user.id}:\n{message.text}')
+    await state.finish()
+
+
 @dp.callback_query_handler(text_contains='', state='*')
 async def all_message(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state()
@@ -48,18 +112,19 @@ async def all_message(callback: types.CallbackQuery, state: FSMContext):
     code = callback.data
     match code:
         case 'katalog':
-            await bot.send_photo(callback.from_user.id, InputFile("Photo/remont.png"), caption=remont,
+            await bot.send_photo(callback.from_user.id, InputFile("Photo/uslugi.png"), caption=uslugi,
                                  reply_markup=bt_kat)
         case 'place':
             await bot.send_photo(callback.from_user.id, InputFile("Photo/map.PNG"), caption=place, reply_markup=bt_sec)
             await bot.send_location(callback.from_user.id, 55.544813, 37.516697, 'Сервиго', 'Москва')
-            time.sleep(1)
-            await main_menu(callback)
+            # time.sleep(1)
+            # await main_menu(callback)
         case 'company':
             await bot.send_photo(callback.from_user.id, InputFile("Photo/gorshok.jpg"), caption=comp,
-                                 reply_markup=bt_sec)
-            time.sleep(1)
-            await main_menu(callback)
+                                 reply_markup=bt_sec, )
+            
+            # time.sleep(1)
+            # await main_menu(callback)
 
 
 @dp.message_handler(text_contains='', state='*')
@@ -68,82 +133,28 @@ async def kat_info(message: types.Message, state: FSMContext):
     await state.finish()
     code = message.text
     bt_reg = InlineKeyboardMarkup()
-    bt_reg.add(InlineKeyboardButton(text='Оставить заявку на ремонт', callback_data='register'))
+    bt_reg.add(InlineKeyboardButton(text='Оставить заявку', callback_data='register'))
     bt_uprgade = InlineKeyboardMarkup()
-    bt_uprgade.add(InlineKeyboardButton(text='Осавьте заявку на апгрейд', callback_data='upgrade'))
+    bt_uprgade.add(InlineKeyboardButton(text='Оставить заявку на апгрейд', callback_data='upgrade'))
     match code:
         case 'Ремонт':
-            await bot.send_message(message.from_user.id, text='''Ну это категория ремонта\nтут описание ремнтных 
-работ и прочая хуйня\nПо кнопке ниже Вы можете оставить заявку на ремонт''', reply_markup=bt_reg)
-
+            await bot.send_photo(message.from_user.id,InputFile('Photo/remont.jpg'), caption=remont, reply_markup=bt_reg)
         case 'Диагностика':
-            await bot.send_message(message.from_user.id, text='Все проверим и скажем что не так', reply_markup=bt_reg)
+            await bot.send_photo(message.from_user.id, InputFile('Photo/diag.jpg'), caption=diag, reply_markup=bt_reg)
         case 'Апгрейд ПК':
-            await bot.send_message(message.from_user.id, text='Ну тут нужно чекать в ДНС цены.', reply_markup=bt_uprgade)
+            await bot.send_message(message.from_user.id, text='Ну тут нужно чекать в ДНС цены.',
+                                   reply_markup=bt_uprgade)
         case 'Удаление вирусов':
-            await bot.send_message(message.from_user.id, text='нахуй не нужны вам эти вирусы поганые!\nМы это, антисептик ваш.')
+            await bot.send_photo(message.from_user.id, InputFile("Photo/virus.jpg"), caption=virus)
         case 'Если просто не включается компьютер?':
-            await bot.send_message(message.from_user.id, text='А может ну его... Компы эти сложные, а?\n и кстати, не пишите сюда больше')
+            await bot.send_message(message.from_user.id,
+                                   text='А может ну его... Компы эти сложные, а?\n и кстати, не пишите сюда больше')
             await bot.send_message(message.from_user.id, text='Бан по причине тупоголовый')
         case 'Сборка':
-            await bot.send_message(message.from_user.id, text='Оставьте заявку на сборку пк. Если нужны дополнительные комплектующие, сообщите.')
+            await bot.send_message(message.from_user.id,
+                                   text='Привозите свои комплектующие. Мы поможем вам собрать ПК и дадим советы')
 
 
-
-@dp.callback_query_handler(text='register')
-async def my_callback_handler(callback_query: types.CallbackQuery):
-    try:
-        print("Button clicked!")
-        await bot.answer_callback_query(callback_query.id)
-        await bot.send_message(callback_query.from_user.id, "Button clicked!")
-    except Exception as e:
-        print(f"Error: {e}")
-
-
-@dp.message_handler(chat_id=CHANNEL_ID)
-async def admin_reply(message: types.Message):
-    # me = await bot.get_me()
-    # if not message.reply_to_message:
-    #     return
-    # if message.reply_to_message.from_user.id != me.id:
-    #     return
-    # if not message.text:
-    #     await bot.send_message(message.chat.id, "Я обрабатываю только текст")
-    #     return
-    # if message.reply_to_message.text.split('\n')[0] not in keyboards.vturmu:
-    #     return
-    # if not message.reply_to_message.text.__contains__(", "):
-    #     return
-
-    bt_info=InlineKeyboardMarkup()
-    bt_info.add(InlineKeyboardButton(text='Кнопка для вопросов', callback_data='info'))
-
-    # Парсим id из сообщения
-    head = message.reply_to_message.text.split('\n')[0].split()[0]
-    if head == 'Обращение':
-        uid = message.reply_to_message.text.split('\n')[2].split()[1]
-        feedback = message.reply_to_message.text.split('\n')[5]
-        text = f'"{feedback}"'
-        try:
-            await bot.send_message(uid, f'''{text}
-⚠Ответ от администратора: 👇🏻\n{message.text}
-В случае возникновения вопросов или уточнений, напишите по кнопке ниже''',reply_markup=bt_info)
-        except CantInitiateConversation:
-            await bot.reply("Ошибка\n")
-    elif head == 'Заявка':
-        uid = message.reply_to_message.text.split('\n')[2].split()[1]
-        feedback = message.reply_to_message.text.split('\n')[0].split()[3].rstrip(':')
-        text = f'"{feedback}"'
-        try:
-            await bot.send_message(uid, f'''Ремонт {text}
-⚠Ответ от администратора: 👇🏻\n{message.text}
-В случае возникновения вопросов или уточнений, напишите по кнопке ниже''',reply_markup=bt_info)
-        except CantInitiateConversation:
-            await bot.reply("Ошибка\n")
-    elif head == 'Модернизация':
-        uid = message.reply_to_message.text.split('\n')[2].split()[1]
-        try:
-            await bot.send_message(uid, f'''Ваша заявка принята.
-В случае возникновения вопросов или уточнений, напишите по кнопке ниже''',reply_markup=bt_info)
-        except CantInitiateConversation:
-            await bot.reply("Ошибка\n")
+@dp.message_handler()
+async def delete_message(message: types.Message):
+    await bot.delete_message(message.chat.id, message.message_id)

@@ -2,13 +2,13 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardBut
 
 # Главное меню
 button_menu = InlineKeyboardButton(text='Меню', callback_data='menu')
-# bt_reg = InlineKeyboardButton(text='Оставить заявку на ремонт', callback_data='register')
-# bt_kons = InlineKeyboardButton(text="Техподдержка", callback_data='konsult')
-bt_sec = ReplyKeyboardMarkup(resize_keyboard=True).add(button_menu)
+bt_reg = InlineKeyboardButton(text='Оставить заявку на ремонт', callback_data='register')
+bt_kons = InlineKeyboardButton(text="Техподдержка", callback_data='konsult')
+bt_sec = ReplyKeyboardMarkup(resize_keyboard=True).add(button_menu).insert(bt_reg).insert(bt_kons)
 
 kb1 = InlineKeyboardMarkup()
-kb1.insert(InlineKeyboardButton(text="Оставить заявку на ремонт", callback_data='register'))
-kb1.insert(InlineKeyboardButton(text="Техподдержка", callback_data='konsult'))
+# kb1.insert(InlineKeyboardButton(text="Оставить заявку на ремонт", callback_data='register'))
+# kb1.insert(InlineKeyboardButton(text="Техподдержка", callback_data='konsult'))
 kb1.add(InlineKeyboardButton(text="Виды услуг", callback_data='katalog'))
 kb1.add(InlineKeyboardButton(text="Статус заказа",
                                    web_app=WebAppInfo(url='https://wul3x.github.io/ServerBot-site')))
@@ -21,7 +21,7 @@ bt_feed.add(InlineKeyboardButton(text='Ошибка', callback_data='feed:Оши
 bt_feed.add(InlineKeyboardButton(text='Отзыв', callback_data='feed:Отзыв'))
 
 bt_remont = InlineKeyboardButton(text='Ремонт', callback_data='remont')
-bt_diag = InlineKeyboardButton(text='Диагностика', callback_data='diag')
+bt_diag = InlineKeyboardButton(text='Диагностика и профилактика', callback_data='diag')
 bt_upgrade = InlineKeyboardButton(text='Апгрейд ПК', callback_data='upgrade')
 bt_virus = InlineKeyboardButton(text='Удаление вирусов', callback_data='virus')
 bt_tup = InlineKeyboardButton(text='Если просто не включается компьютер?', callback_data='tup')

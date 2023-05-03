@@ -121,7 +121,7 @@ def upgrade():
         elif callback.data.split(':')[1] == 'error':
             reank = types.InlineKeyboardMarkup()
             reank.insert(types.InlineKeyboardButton(text="Оставить заявку", callback_data="register"))
-            await bot.send_message(callback.from_user.id, "Извините, пожалуйста, пройдите опрос снова",
+            await bot.send_message(callback.from_user.id, "Пройдите опрос снова.",
                                    reply_markup=reank)
             async with state.proxy() as data:
                 data['user_name'] = callback.from_user.first_name

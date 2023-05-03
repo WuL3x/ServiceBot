@@ -41,13 +41,13 @@ def konsult():
         await state.finish()
 
     # Обработчик для начала обращения в службу технической поддержки
-    @dp.callback_query_handler(lambda c: c.data == 'konsult', state="*")
-    async def answer_k(callback_query: CallbackQuery, state: FSMContext):
-        await callback_query.answer()
-        await callback_query.message.answer("Пожалуйста, опишите свой вопрос/претензию полность",
+    @dp.message_handler(text='Техподдержка')
+    async def answer_k(mess: types.Message, state: FSMContext):
+
+        await mess.answer("Пожалуйста, опишите свой вопрос/претензию полность",
                                             reply_markup=cancelButton)
         ReplyKeyboardRemove()
-        await callback_query.message.answer(
+        await mess.answer(
             "Выберите тип обращения:", reply_markup=bt_feed)
         await FormKonsult.type_message.set()
 
@@ -63,7 +63,7 @@ def konsult():
         await FormKonsult.klient_message.set()
 
     # Обработчик ввода сообщения
-    @dp.message_handler(state=FormKonsult.klient_message)
+    @dp.message_handler(state=FormKonsult.klient_message, content_types=['text'])
     async def process_klient_message(message: types.Message, state: FSMContext):
         async with state.proxy() as data:
             data['klient_message'] = message.text
@@ -76,7 +76,7 @@ def konsult():
 
             kb_chat = InlineKeyboardMarkup()
             kb_chat.add(InlineKeyboardButton(text="Перейти в чат",
-                                             url=f"t.me/{message.from_user.username}"))
+                                             url=f"t.me/{message.from_user.username}", callback_data='perehod'))
 
             # Отправляем сообщение на заданный вами чат или группу в Telegram
             await bot.send_message(CHANNEL_ID, text, reply_markup=kb_chat)
@@ -89,6 +89,11 @@ def konsult():
             else:
                 await message.answer("Благодарим за ваше неравнодушие к нашему сервису!\n"
                                      "Информация будет передана сотрудникам.", reply_markup=bt_sec)
-        time.sleep(1)
-        await main_menu(message)
+        # time.sleep(2)
+        # await main_menu(message)
         await state.finish()
+
+
+
+
+
