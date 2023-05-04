@@ -1,6 +1,6 @@
 import re
 import time
-
+import sqlite3
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import state
@@ -21,12 +21,24 @@ from texts import place, comp, virus, diag, uslugi, remont, start
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
+    global conn, cursor
     await message.answer(
         f'''Привет, {message.from_user.username}!🖐''')
     await bot.send_photo(message.from_user.id, InputFile('Photo/logo.png'), caption=start, reply_markup=bt_sec)
-    time.sleep(1)
-    await main_menu(message)
+    # time.sleep(1)
+    # await main_menu(message)
 
+    try:
+        conn = sqlite3.connect('E:/sqlite3/Servigo')
+        cursor = conn.cursor()
+        conn.execute("PRAGMA autocommit = 1")
+        print('База подключена')
+    except sqlite3.Error as error:
+        print('Ошибка при работе с SQLite:', error)
+    finally:
+        if conn:
+            cursor.close()
+            conn.close()
 
 
 @dp.callback_query_handler(text=['menu'])
@@ -44,8 +56,11 @@ konsult()
 register()
 upgrade()
 
+
 @dp.message_handler(chat_id=CHANNEL_ID)
 async def admin_reply(message: types.Message):
+    if message.reply_to_message is None:
+        return
     bt_info = InlineKeyboardMarkup()
     bt_info.add(InlineKeyboardButton(text='Кнопка для вопросов', callback_data='info'))
     # Парсим id из сообщения
@@ -56,23 +71,26 @@ async def admin_reply(message: types.Message):
             uid = message.reply_to_message.text.split('\n')[2].split()[1]
             feedback = message.reply_to_message.text.split('\n')[5]
             text = f'"{feedback}"'
-            await bot.send_message(uid, f'''{text}
-Ответ от администратора: 👇🏻\n{message.text}''', reply_markup=bt_info)
+            await bot.send_message(uid, f'''Вопрос: {text}
+Ответ: {message.text}''', reply_markup=bt_info)
+
         elif type == 'Отзыв':
             await bot.send_message(CHANNEL_ID, text='Это отзыв, еблан!')
 
+    elif head == 'Вопрос':
+        uid = message.reply_to_message.text.split('\n')[1].split()[1]
+        await bot.send_message(uid, f'''Ответ: {message.text}''', reply_markup=bt_info)
 
     elif head == 'Заявка':
         uid = message.reply_to_message.text.split('\n')[2].split()[1]
         feedback = message.reply_to_message.text.split('\n')[0].split()[3].rstrip(':')
         text = f'"{feedback}"'
         await bot.send_message(uid, f'''Ремонт {text}
-Ответ от администратора: 👇🏻\n{message.text}''', reply_markup=bt_info)
+Ответ: {message.text}''', reply_markup=bt_info)
 
     elif head == 'Модернизация':
         uid = message.reply_to_message.text.split('\n')[2].split()[1]
         await bot.send_message(uid, f'''Ваша заявка принята.''', reply_markup=bt_info)
-
 
 
 class Form_vopros(StatesGroup):
@@ -90,7 +108,10 @@ async def voprosiki(callback: types.CallbackQuery):
 async def get_vopros(message: types.Message, state: FSMContext):
     vopros = message.text
     await state.update_data(question=vopros)  # сохраняем вопрос в состояние
-    await bot.send_message(CHANNEL_ID, text=f'Вопрос от пользователя @{message.from_user.username}:\n{vopros}')
+    await bot.send_message(CHANNEL_ID, text=f'''Вопрос:\nTG_ID: {message.from_user.id}
+Вопрос от пользователя @{message.from_user.username}:
+{vopros}
+    ''')
     await bot.send_message(message.from_user.id, text='Ваш вопрос отправлен администратору, ожидайте!')
     await Form_vopros.wait_otvet.set()  # переходим в состояние ожидания ответа от администратора
 
@@ -102,8 +123,9 @@ async def process_answer(message: types.Message, state: FSMContext):
     await bot.send_message(question.from_user.id, text=f'Ответ на ваш вопрос: {message.text}')
     await bot.send_message(CHANNEL_ID,
                            text=f'Ответ на вопрос от пользователя {question.from_user.id}:\n{message.text}')
-    await state.finish()
 
+
+# второй ответ не работает
 
 @dp.callback_query_handler(text_contains='', state='*')
 async def all_message(callback: types.CallbackQuery, state: FSMContext):
@@ -122,7 +144,7 @@ async def all_message(callback: types.CallbackQuery, state: FSMContext):
         case 'company':
             await bot.send_photo(callback.from_user.id, InputFile("Photo/gorshok.jpg"), caption=comp,
                                  reply_markup=bt_sec, )
-            
+
             # time.sleep(1)
             # await main_menu(callback)
 
@@ -138,7 +160,8 @@ async def kat_info(message: types.Message, state: FSMContext):
     bt_uprgade.add(InlineKeyboardButton(text='Оставить заявку на апгрейд', callback_data='upgrade'))
     match code:
         case 'Ремонт':
-            await bot.send_photo(message.from_user.id,InputFile('Photo/remont.jpg'), caption=remont, reply_markup=bt_reg)
+            await bot.send_photo(message.from_user.id, InputFile('Photo/remont.jpg'), caption=remont,
+                                 reply_markup=bt_reg)
         case 'Диагностика':
             await bot.send_photo(message.from_user.id, InputFile('Photo/diag.jpg'), caption=diag, reply_markup=bt_reg)
         case 'Апгрейд ПК':

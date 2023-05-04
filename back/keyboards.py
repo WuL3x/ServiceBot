@@ -33,7 +33,7 @@ bt_kat = ReplyKeyboardMarkup(resize_keyboard=True).add(bt_remont).row(bt_sborka)
 kb_dev = InlineKeyboardMarkup()
 kb_dev.insert(InlineKeyboardButton(text="Планшет", callback_data='device:Планшет'))
 kb_dev.add(InlineKeyboardButton(text="Смартфон", callback_data='device:Смартфон'))
-kb_dev.add(InlineKeyboardButton(text="Компьютер", callback_data='device:Компьютер'))
+kb_dev.add(InlineKeyboardButton(text="Компьютер", callback_data='device:ПК'))
 
 
 
