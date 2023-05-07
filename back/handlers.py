@@ -1,5 +1,7 @@
 import re
 import time
+import json
+import pickle
 import sqlite3
 from aiogram import types
 from aiogram.dispatcher import FSMContext
@@ -177,7 +179,3 @@ async def kat_info(message: types.Message, state: FSMContext):
             await bot.send_message(message.from_user.id,
                                    text='Привозите свои комплектующие. Мы поможем вам собрать ПК и дадим советы')
 
-
-@dp.message_handler()
-async def delete_message(message: types.Message):
-    await bot.delete_message(message.chat.id, message.message_id)
