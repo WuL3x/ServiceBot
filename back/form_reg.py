@@ -178,20 +178,21 @@ def register():
             kb_chat = InlineKeyboardMarkup()
             kb_chat.add(InlineKeyboardButton(text="Перейти в чат",
                                              url=f"t.me/{callback.from_user.username}"))
-            kb_chat.add(InlineKeyboardButton(text='Подтвердить заявку', callback_data=f"confirm_order:{data['id_order']}"))
-            kb_chat.add(InlineKeyboardButton(text='Отменить заявку', callback_data='agrer:no'))
+            kb_chat.add(InlineKeyboardButton(text='Подтвердить заявку', callback_data=f"confirm_order:{data['id_order']}:yes"))
+            kb_chat.add(InlineKeyboardButton(text='Отменить заявку', callback_data=f"confirm_order:{data['id_order']}:no"))
 
             # Отправляем сообщение на заданный вами чат или группу в Telegram
             await bot.send_message(CHANNEL_ID, text, reply_markup=kb_chat)
         await state.finish()
 
 
-@dp.callback_query_handler(lambda callback_query: True, chat_id=CHANNEL_ID)
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('confirm_order'), chat_id=CHANNEL_ID)
 async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
     global conn, cursor, USER_DATA
     await bot.answer_callback_query(callback.id)
     device, user_name, id_order, dev_name, issue, name, phone, id_client = USER_DATA
-    if callback.data.split(':')[1] == 'yes':
+    USER_DATA[id_order] = callback.data.split(':')[1]
+    if callback.data.split(':')[2] == 'yes':
         try:
             conn = sqlite3.connect('E:/sqlite3/Servigo')
             cursor = conn.cursor()

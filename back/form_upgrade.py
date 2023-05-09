@@ -15,7 +15,7 @@ from main import bot, dp
 button_cancel = types.InlineKeyboardButton('Отмена', callback_data='cancel')
 cancelButton = types.ReplyKeyboardMarkup(resize_keyboard=True).add(button_cancel)
 
-
+# НЕ ДОДЕЛАН НУ И В ПИЗДУ
 @dp.callback_query_handler(text=['Меню'])
 async def main_menu(callback: types.callback_query):
     await bot.send_message(callback.from_user.id, reply_markup=kb1, text='Выберите пункт меню 👇🏻')

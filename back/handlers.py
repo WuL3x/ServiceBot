@@ -175,7 +175,7 @@ async def admin_reply(message: types.Message):
 
     elif head == 'Модернизация':
         uid = message.reply_to_message.text.split('\n')[2].split()[1]
-        await bot.send_message(uid, f'''Ваша заявка принята.''', reply_markup=bt_info)
+        await bot.send_message(uid, f'''Ваша заявка принята. А не пойти ли вам с модернизацией нахзуй?''', reply_markup=bt_info)
 
 
 class Form_vopros(StatesGroup):
