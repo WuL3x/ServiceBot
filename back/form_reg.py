@@ -2,12 +2,12 @@ import logging
 import time
 import uuid
 import sqlite3
-import json
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import ParseMode, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from back.keyboards import kb_dev, kb1
 from config import CHANNEL_ID
 from keyboards import bt_sec
@@ -20,8 +20,12 @@ USER_DATA = {}
 
 
 @dp.callback_query_handler(text=['Меню'])
-async def main_menu(callback: types.callback_query):
-    await bot.send_message(callback.from_user.id, reply_markup=kb1, text='Выберите пункт меню 👇🏻')
+async def main_menu(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        if data.get('user_id') == callback.from_user.id:
+            await main_menu(callback)
+        else:
+            await callback.answer(text='Вы не заполняете форму')
 
 
 def register():
@@ -101,14 +105,22 @@ def register():
     async def process_name(message: types.Message, state: FSMContext):
         async with state.proxy() as data:
             data['name'] = message.text
+        phone_keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        share = KeyboardButton(text="Отправить контакт", request_contact=True)
+        phone_keyboard.add(share).row(button_cancel)
+        await message.answer("Пожалуйста, отправьте свой контактный номер телефона или введите его вручную",
+                             reply_markup=phone_keyboard)
+        await RepairForm.next()
 
-        await message.reply("Введите Ваш номер телефона.", reply=False, reply_markup=cancelButton)
-        await RepairForm.phone.set()
-
-    @dp.message_handler(state=RepairForm.phone)
+    @dp.message_handler(state=RepairForm.phone, content_types=[types.ContentType.TEXT, types.ContentType.CONTACT])
     async def process_phone(message: types.Message, state: FSMContext):
+        if message.contact:
+            phone = message.contact.phone_number
+        else:
+            phone = message.text
+
         async with state.proxy() as data:
-            data['phone'] = message.text
+            data['phone'] = phone
             await state.update_data(data)
 
             # формируем сообщение
@@ -147,9 +159,6 @@ def register():
                 data['id_order'] = data['id_order']
 
         elif callback.data.split(':')[1] == 'verno':
-            await bot.send_message(callback.from_user.id,
-                                   "Спасибо за заявку! В скором времени с вами свяжется менеджер",
-                                   reply_markup=bt_sec)
             async with state.proxy() as data:
                 text = f"Заявка на ремонт: {data['device']}:\n"
                 text += f"TG user name: @{data['user_name']}\n"
@@ -169,12 +178,12 @@ def register():
             kb_chat = InlineKeyboardMarkup()
             kb_chat.add(InlineKeyboardButton(text="Перейти в чат",
                                              url=f"t.me/{callback.from_user.username}"))
-            kb_chat.add(InlineKeyboardButton(text='Подтвердить заявку', callback_data='agree:yes'))
+            kb_chat.add(InlineKeyboardButton(text='Подтвердить заявку', callback_data=f"confirm_order:{data['id_order']}"))
             kb_chat.add(InlineKeyboardButton(text='Отменить заявку', callback_data='agrer:no'))
 
             # Отправляем сообщение на заданный вами чат или группу в Telegram
             await bot.send_message(CHANNEL_ID, text, reply_markup=kb_chat)
-        await RepairForm.dbconn.set()
+        await state.finish()
 
 
 @dp.callback_query_handler(lambda callback_query: True, chat_id=CHANNEL_ID)
@@ -186,52 +195,60 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
         try:
             conn = sqlite3.connect('E:/sqlite3/Servigo')
             cursor = conn.cursor()
-            tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-            print(tables)
+            # проверка на схожесть админского айди и заявителя
+            if callback.from_user.id != USER_DATA[7]:
 
-            # вставка данных в таблицу Clients
-            id_device_type = cursor.execute(
-                f"SELECT id_device from Device_type dt WHERE name == '{device}'").fetchone()[0]
+                existing_client = "SELECT id_client FROM Clients WHERE tg_username=? OR phone=?"
+                existing_client = cursor.execute(existing_client, (user_name, phone)).fetchone()
 
-            print(id_device_type)
-            if device == 'ПК':
-                insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-                                      "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-                cursor.execute(insert_client_query,
-                               (user_name, 'ПК', device, name, phone,
-                                id_device_type))
+                if existing_client:
+                    # если клиент уже существует, то используем его id_client для создания нового заказа
+                    id_client = existing_client[0]
 
+                # вставка данных в таблицу Clients
+                else:
+                    insert_client = "INSERT INTO Clients (id_client, tg_username,  familiya_imya, phone) VALUES (?," \
+                                          " ?, ?, ?)"
+                    cursor.execute(insert_client,
+                                   (
+                                       id_client, user_name, name, phone))
+
+                if device == 'ПК':
+                    insert_order = "INSERT INTO Orders (id_order, id_client, issue, id_status, dev_name, device_type)"\
+                                         "VALUES (?, ?, ?, ?, ?, ?)"
+                    cursor.execute(insert_order, (id_order, id_client, issue, 1, 'ПК', device))
+
+                else:
+                    insert_client = "INSERT INTO Orders (id_order, id_client, issue, id_status, dev_name, device_type)"\
+                                          "VALUES (?, ?, ?, ?, ?, ?)"
+                    cursor.execute(insert_client,
+                                   (
+                                       id_order, id_client, issue, 1, dev_name, device))
+
+                # вставка данных в таблицу Orders
+                conn.commit()
+                print(f'Данные переданы для {USER_DATA[7]}')
+                await bot.send_message(USER_DATA[7],
+                                       f'''Спасибо за заявку №{id_order}! В скором времени с вами свяжется менеджер.''',
+                                       reply_markup=bt_sec)
             else:
-                insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-                                      "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-                cursor.execute(insert_client_query,
-                               (
-                                   user_name, dev_name, device, name,
-                                   phone,
-                                   id_device_type))
-
-            # вставка данных в таблицу Orders
-            insert_order_query = "INSERT INTO Orders (id_order, id_client, issue, id_status) VALUES (?, ?, ?, ?)"
-            cursor.execute(insert_order_query, (id_order, id_client, issue, 0))
-
-            conn.commit()
-            print('Данные переданы')
-            await bot.send_message(callback.from_user.id,
-                                   f'''Спасибо за заявку №{id_order}! В скором времени с вами свяжется менеджер.''',
-                                   reply_markup=bt_sec)
+                await bot.send_message(USER_DATA[7], 'pizdec колбек не = юзер_дата ')
         except sqlite3.Error as error:
             print('Ошибка при работе с SQLite:', error)
         finally:
             if conn:
                 cursor.close()
                 conn.close()
+        time.sleep(2)
+        await main_menu(callback, state)
         USER_DATA = []
         await state.finish()
+
     else:
-        await bot.send_message(callback.from_user.id,
+        await bot.send_message(USER_DATA[7],
                                f'''⛔ Упс! Заявка №{id_order} была отменена.''')
         time.sleep(2)
-        await main_menu(callback)
+        await main_menu(callback, state)
 
     # @dp.callback_query_handler(state=RepairForm.dbconn)
     # async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):

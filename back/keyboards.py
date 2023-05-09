@@ -10,8 +10,7 @@ kb1 = InlineKeyboardMarkup()
 # kb1.insert(InlineKeyboardButton(text="Оставить заявку на ремонт", callback_data='register'))
 # kb1.insert(InlineKeyboardButton(text="Техподдержка", callback_data='konsult'))
 kb1.add(InlineKeyboardButton(text="Виды услуг", callback_data='katalog'))
-kb1.add(InlineKeyboardButton(text="Статус заказа",
-                                   web_app=WebAppInfo(url='https://wul3x.github.io/ServerBot-site')))
+kb1.add(InlineKeyboardButton(text="Статус заказа", callback_data='order_info'))
 kb1.add(InlineKeyboardButton(text='Где мы находимся?', callback_data='place'))
 kb1.add(InlineKeyboardButton(text='О компании', callback_data='company'))
 

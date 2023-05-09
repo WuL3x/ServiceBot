@@ -1,20 +1,14 @@
-import re
-import time
-import json
-import pickle
 import sqlite3
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import state
 from aiogram.dispatcher.filters.state import StatesGroup, State
-from aiogram.types import InputFile, WebAppInfo, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils.exceptions import CantInitiateConversation
+from aiogram.types import InputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
 from back.config import CHANNEL_ID
 from back.form_kons import konsult
 from back.form_reg import register
 from back.form_upgrade import upgrade
-
 # from form_reg import register
 from keyboards import bt_sec, kb1, bt_kat
 from main import bot, dp
@@ -34,7 +28,7 @@ async def process_start_command(message: types.Message):
         conn = sqlite3.connect('E:/sqlite3/Servigo')
         cursor = conn.cursor()
         conn.execute("PRAGMA autocommit = 1")
-        print('База подключена')
+        print(f'База подключена для {message.from_user.id}.')
     except sqlite3.Error as error:
         print('Ошибка при работе с SQLite:', error)
     finally:
@@ -44,7 +38,7 @@ async def process_start_command(message: types.Message):
 
 
 @dp.callback_query_handler(text=['menu'])
-async def main_menu(callback: types.callback_query):
+async def main_menu(callback: types.CallbackQuery):
     await bot.send_message(callback.from_user.id, text='Выберите пункт меню 👇🏻', reply_markup=kb1)
 
 
@@ -57,6 +51,95 @@ async def back_to_menu(message: types.Message):
 konsult()
 register()
 upgrade()
+
+
+@dp.callback_query_handler(text='order_info')
+async def process_show_orders(callback_query: types.CallbackQuery):
+    id_client = callback_query.from_user.id
+    orders = await get_orders_for_client(id_client)  # <-- await the coroutine
+    buttons = [InlineKeyboardButton(str(order), callback_data=f"Заказ №:{order}") for order in orders]
+    keyboard = InlineKeyboardMarkup(row_width=2).add(*buttons)
+    await bot.send_message(id_client, "Выберите номер заказа:", reply_markup=keyboard)
+
+
+async def get_orders_for_client(id_client):
+    with sqlite3.connect('E:/sqlite3/Servigo') as conn:
+        cursor = conn.cursor()
+        orders_zp = "SELECT id_order FROM Orders WHERE id_client=?"
+        orders = cursor.execute(orders_zp, (id_client,)).fetchall()
+    return [order[0] for order in orders]
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('Заказ №'))
+async def process_get_data(callback_query: types.CallbackQuery):
+    id_order = callback_query.data.split(':')[1]
+    with sqlite3.connect('E:/sqlite3/Servigo') as conn:
+        cursor = conn.cursor()
+        order_zp = '''SELECT Orders.id_order, Clients.tg_username, Clients.familiya_imya, Clients.phone, 
+    Orders.device_type, Orders.dev_name, Orders.issue, Status.order_status 
+    FROM Orders 
+    JOIN Clients ON Orders.id_client = Clients.id_client 
+    JOIN Status ON Orders.id_status = Status.id_status 
+    WHERE Orders.id_order = ?'''
+        order_data = cursor.execute(order_zp, (id_order,)).fetchone()
+    if order_data:
+        text = f"Заявка на ремонт: {order_data[5]}:\n"
+        text += f"TG user name: @{order_data[1]}\n"
+        text += f"Номер заказа: {order_data[0]}\n"
+        if order_data[4] != 'ПК':
+            text += f"Название устройства: {order_data[5]}\n"
+        text += f"Описание проблемы: {order_data[6]}\n"
+        text += f"Фамилия и имя: {order_data[2]}\n"
+        text += f"Телефон: {order_data[3]}\n"
+        text += f"Статус заказа: {order_data[7]}"
+        await bot.send_message(callback_query.from_user.id, text=text)
+    else:
+        await bot.send_message(callback_query.from_user.id, text="Заказ не найден")
+
+
+@dp.callback_query_handler(text='my_orders')
+async def process_my_orders(callback_query: types.CallbackQuery):
+    await process_show_orders(callback_query)
+
+
+@dp.callback_query_handler(text='all_orders')
+async def process_all_orders(callback_query: types.CallbackQuery):
+    # здесь можно написать код для вывода всех заказов (если это нужно)
+    pass
+
+
+# async def client_from_bd(callback: types.CallbackQuery):
+#     conn = sqlite3.connect('E:/sqlite3/Servigo')
+#     cursor = conn.cursor()
+#     orders_zp = "SELECT id_order FROM Orders WHERE id_client=?"
+#     try:
+#         orders = cursor.execute(orders_zp, (callback.from_user.id,)).fetchall()
+#         buttons = [InlineKeyboardButton(str(order[0]), callback_data=f"Заказ №: {order[0]}") for order in orders]
+#         keyboard = InlineKeyboardMarkup(row_width=2).add(*buttons)
+#         await bot.send_message(callback.from_user.id, "Выберите номер заказа:", reply_markup=keyboard)
+#         return orders
+#     except Exception as e:
+#         print(e)
+#     finally:
+#         conn.close()
+# @dp.callback_query_handler(text='order_info')
+# @dp.callback_query_handler(lambda c: c.data and c.data.startswith('Заказ №')
+# async def process_get_data(callback_query: types.CallbackQuery):
+#     id_order = callback_query.data.split(': ')[1]
+#     user_data = await client_from_bd(callback_query)
+#     for data in user_data:
+#         if data['id_order'] == id_order:
+#             text = f"Заявка на ремонт: {data['device']}:\n"
+#             text += f"TG user name: @{data['user_name']}\n"
+#             text += f"Номер заказа: {data['id_order']}\n"
+#             if data['device'] != 'ПК':
+#                 text += f"Название устройства: {data['dev_name']}\n"
+#             else:
+#                 data['dev_name'] = 'ПК'
+#             text += f"Описание проблемы: {data['issue']}\n"
+#             text += f"Фамилия и имя: {data['name']}\n"
+#             text += f"Телефон: {data['phone']}\n"
+#             await bot.send_message(callback_query.from_user.id, text=text)
 
 
 @dp.message_handler(chat_id=CHANNEL_ID)
@@ -178,4 +261,3 @@ async def kat_info(message: types.Message, state: FSMContext):
         case 'Сборка':
             await bot.send_message(message.from_user.id,
                                    text='Привозите свои комплектующие. Мы поможем вам собрать ПК и дадим советы')
-
