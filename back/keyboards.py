@@ -4,7 +4,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardBut
 button_menu = InlineKeyboardButton(text='Меню', callback_data='menu')
 bt_reg = InlineKeyboardButton(text='Оставить заявку на ремонт', callback_data='register')
 bt_kons = InlineKeyboardButton(text="Техподдержка", callback_data='konsult')
-bt_sec = ReplyKeyboardMarkup(resize_keyboard=True).add(button_menu).insert(bt_reg).insert(bt_kons)
+bt_sec = ReplyKeyboardMarkup(resize_keyboard=True).add(button_menu).add(bt_reg).insert(bt_kons)
 
 kb1 = InlineKeyboardMarkup()
 # kb1.insert(InlineKeyboardButton(text="Оставить заявку на ремонт", callback_data='register'))
