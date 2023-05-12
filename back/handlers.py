@@ -5,7 +5,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
-from back.config import CHANNEL_ID
+from back.config import CHANNEL_ID, admins
 from back.form_kons import konsult
 from back.form_reg import register
 from back.form_upgrade import upgrade
@@ -18,11 +18,13 @@ from texts import place, comp, virus, diag, uslugi, remont, start
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     global conn, cursor
-    await message.answer(
-        f'''Привет, {message.from_user.username}!🖐''')
-    await bot.send_photo(message.from_user.id, InputFile('Media/logo.png'), caption=start, reply_markup=bt_sec)
-    # time.sleep(1)
-    # await main_menu(message)
+    if message.chat.type != 'private':
+       await bot.send_message(CHANNEL_ID, text='Чат бот готов к работе')
+    else:
+        await message.answer(
+            f'''Привет, {message.from_user.username}!🖐''')
+        await bot.send_photo(message.from_user.id, InputFile('Media/logo.png'), caption=start, reply_markup=bt_sec)
+
 
     try:
         conn = sqlite3.connect('E:/sqlite3/Servigo')
@@ -178,30 +180,7 @@ async def process_answer(message: types.Message, state: FSMContext):
 
 
 # второй ответ не работает
-
-@dp.callback_query_handler(text_contains='', state='*')
-async def all_message(callback: types.CallbackQuery, state: FSMContext):
-    await state.set_state()
-    await state.finish()
-    code = callback.data
-    match code:
-        case 'katalog':
-            await bot.send_photo(callback.from_user.id, InputFile("Media/uslugi.png"), caption=uslugi,
-                                 reply_markup=bt_kat)
-        case 'place':
-            await bot.send_photo(callback.from_user.id, InputFile("Media/map.PNG"), caption=place, reply_markup=bt_sec)
-            await bot.send_location(callback.from_user.id, 55.544813, 37.516697, 'Сервиго', 'Москва')
-            # time.sleep(1)
-            # await main_menu(callback)
-        case 'company':
-            await bot.send_photo(callback.from_user.id, InputFile("Media/gorshok.jpg"), caption=comp,
-                                 reply_markup=bt_sec, )
-
-            # time.sleep(1)
-            # await main_menu(callback)
-
-
-# Вывод значений таблицы Sevices для ознакомления
+#
 async def show_services(message: types.Message):
     conn = sqlite3.connect('E:/sqlite3/Servigo')
     cursor = conn.cursor()
@@ -214,11 +193,13 @@ async def show_services(message: types.Message):
     # Создаем список кнопок с названиями услуг
     buttons = []
     for service in services:
-        buttons.append([types.InlineKeyboardButton(service[1], callback_data=f'service:{service[1]}')])
+        buttons.append([InlineKeyboardButton(service[1], callback_data=f'service:{service[1]}')])
+
+    # Создаем клавиатуру с кнопками
+    ser_but = InlineKeyboardMarkup(buttons)
 
     # Отправляем сообщение с кнопками пользователю
-    keyboard = types.InlineKeyboardMarkup(buttons)
-    await message.answer('Выберите услугу:', reply_markup=keyboard)
+    await message.answer('Выберите услугу:', reply_markup=ser_but)
 
     conn.close()
 
@@ -242,6 +223,31 @@ async def show_service_info(callback: types.CallbackQuery):
     conn.close()
 
 
+@dp.callback_query_handler(text_contains='', state='*')
+async def all_message(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state()
+    await state.finish()
+    code = callback.data
+    match code:
+        case 'katalog':
+            await bot.send_photo(callback.from_user.id, InputFile("Media/uslugi.png"), caption=uslugi,
+                                reply_markup=bt_kat)
+        case 'place':
+            await bot.send_photo(callback.from_user.id, InputFile("Media/map.PNG"), caption=place, reply_markup=bt_sec)
+            await bot.send_location(callback.from_user.id, 55.544813, 37.516697, 'Сервиго', 'Москва')
+            # time.sleep(1)
+            # await main_menu(callback)
+        case 'company':
+            await bot.send_photo(callback.from_user.id, InputFile("Media/gorshok.jpg"), caption=comp,
+                                 reply_markup=bt_sec, )
+
+            # time.sleep(1)
+            # await main_menu(callback)
+
+
+#Вывод значений таблицы Sevices для ознакомления
+
+
 @dp.message_handler(text_contains='', state='*')
 async def kat_info(message: types.Message, state: FSMContext):
     await state.set_state()
@@ -255,7 +261,7 @@ async def kat_info(message: types.Message, state: FSMContext):
         case 'Ремонт':
             await bot.send_photo(message.from_user.id, InputFile('Media/remont.jpg'), caption=remont,
                                  reply_markup=bt_reg)
-            await show_services(message)
+            # await show_services(message)
         case 'Диагностика и профилактика':
             await bot.send_photo(message.from_user.id, InputFile('Media/diag.jpg'), caption=diag, reply_markup=bt_reg)
         case 'Апгрейд ПК':
@@ -272,7 +278,7 @@ async def kat_info(message: types.Message, state: FSMContext):
                                    text='Привозите свои комплектующие. Мы поможем вам собрать ПК и дадим советы')
 
 
-@dp.message_handler(commands=['/orders'])
+@dp.message_handler(commands=['orders'])
 async def show_orders(message: types.Message):
     # Проверяем, что сообщение пришло из админ-чата
     if message.chat.id != CHANNEL_ID:

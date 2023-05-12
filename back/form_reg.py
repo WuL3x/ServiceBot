@@ -16,8 +16,12 @@ from main import bot, dp
 button_cancel = types.InlineKeyboardButton('Отмена', callback_data='cancel')
 cancelButton = types.ReplyKeyboardMarkup(resize_keyboard=True).add(button_cancel)
 USER_DATA = {}
+order_id = 1
 
-
+def generate_order_id():
+    global order_id
+    order_id += 1
+    return f'{order_id:06}'
 
 @dp.callback_query_handler(text=['Меню'])
 async def main_menu(callback: types.CallbackQuery, state: FSMContext):
@@ -47,7 +51,7 @@ def register():
                                reply_markup=cancelButton)
         async with state.proxy() as data:
             data['user_name'] = callback.from_user.username
-            data['id_order'] = str(uuid.uuid4().int)[:6]
+            data['id_order'] = generate_order_id()
             data['id_client'] = callback.from_user.id
             await state.update_data(data)
         await bot.send_message(callback.from_user.id, 'Выберите тип устройства:', reply_markup=kb_dev)
@@ -191,7 +195,8 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
     global conn, cursor, USER_DATA
     await bot.answer_callback_query(callback.id)
     device, user_name, id_order, dev_name, issue, name, phone, id_client = USER_DATA
-    USER_DATA[id_order] = callback.data.split(':')[1]
+    print(USER_DATA)
+    USER_DATA[int(id_order)] = callback.data.split(':')[1]
     if callback.data.split(':')[2] == 'yes':
         try:
             conn = sqlite3.connect('E:/sqlite3/Servigo')
