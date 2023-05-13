@@ -232,6 +232,7 @@ async def all_message(callback: types.CallbackQuery, state: FSMContext):
         case 'katalog':
             await bot.send_photo(callback.from_user.id, InputFile("Media/uslugi.png"), caption=uslugi,
                                 reply_markup=bt_kat)
+            await bot.send_photo(callback.from_user.id, photo=open('Media/pricelist.png', 'rb'))
         case 'place':
             await bot.send_photo(callback.from_user.id, InputFile("Media/map.PNG"), caption=place, reply_markup=bt_sec)
             await bot.send_location(callback.from_user.id, 55.544813, 37.516697, 'Сервиго', 'Москва')

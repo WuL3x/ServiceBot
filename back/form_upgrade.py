@@ -82,7 +82,7 @@ def upgrade():
             text = f"Заявка\n"
             text += f"Модернизация устройства\n"
             text += f"Номер заявки: {data['id_order']}\n"
-            text += f"Описание проблемы: {data['issue']}\n"
+            text += f"Что модернизировать : {data['issue']}\n"
             text += f"Имя: {data['name']}\n"
             text += f"Телефон: {data['phone']}\n"
 
@@ -108,7 +108,7 @@ def upgrade():
                 text += f"TG user name: @{data['user_name']}\n"
                 text += f"TG_ID: {callback.from_user.id}\n"
                 text += f"Номер заявки: {data['id_order']}\n"
-                text += f"Описание проблемы: {data['issue']}\n"
+                text += f"Что модернизировать : {data['issue']}\n"
                 text += f"Имя: {data['name']}\n"
                 text += f"Телефон: {data['phone']}\n"
             kb_chat = InlineKeyboardMarkup()
@@ -132,3 +132,6 @@ def upgrade():
         time.sleep(1)
         await main_menu(callback)
         await state.finish()
+
+
+# не релизавана отправка в бд
