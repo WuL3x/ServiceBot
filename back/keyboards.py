@@ -15,19 +15,20 @@ kb1.add(InlineKeyboardButton(text='Где мы находимся?', callback_da
 kb1.add(InlineKeyboardButton(text='О компании', callback_data='company'))
 
 bt_feed = InlineKeyboardMarkup()
-bt_feed.insert(InlineKeyboardButton(text='Вопрос', callback_data='feed:Вопрос'))
-bt_feed.add(InlineKeyboardButton(text='Ошибка', callback_data='feed:Ошибка'))
-bt_feed.add(InlineKeyboardButton(text='Отзыв', callback_data='feed:Отзыв'))
+bt_feed.insert(InlineKeyboardButton(text='❔ Вопрос', callback_data='feed:Вопрос'))
+bt_feed.add(InlineKeyboardButton(text='❌ Ошибка', callback_data='feed:Ошибка'))
+bt_feed.add(InlineKeyboardButton(text='🤞 Отзыв', callback_data='feed:Отзыв'))
 
-bt_remont = InlineKeyboardButton(text='Ремонт', callback_data='remont')
-bt_diag = InlineKeyboardButton(text='Диагностика и профилактика', callback_data='diag')
-bt_upgrade = InlineKeyboardButton(text='Апгрейд ПК', callback_data='upgrade')
-bt_virus = InlineKeyboardButton(text='Удаление вирусов', callback_data='virus')
-bt_tup = InlineKeyboardButton(text='Если просто не включается компьютер?', callback_data='tup')
-bt_sborka = InlineKeyboardButton(text='Сборка', callback_data='sborka')
-bt_menu = InlineKeyboardButton(text='Назад в главное меню', callback_data='back_menu')
-bt_kat = ReplyKeyboardMarkup(resize_keyboard=True).add(bt_remont).row(bt_sborka).insert(bt_virus).insert(bt_upgrade).insert(bt_diag)\
-    .insert(bt_tup).add(bt_menu)
+bt_price = InlineKeyboardButton(text='₽ Наши цены ₽', callback_data='prices')
+bt_remont = InlineKeyboardButton(text='🛠 Ремонт', callback_data='remont')
+bt_diag = InlineKeyboardButton(text='💉 Диагностика и профилактика', callback_data='diag')
+bt_upgrade = InlineKeyboardButton(text='📈 Апгрейд ПК', callback_data='upgrade')
+# bt_virus = InlineKeyboardButton(text='Удаление вирусов', callback_data='virus')
+# bt_tup = InlineKeyboardButton(text='Если просто не включается компьютер?', callback_data='tup')
+bt_sborka = InlineKeyboardButton(text='🖥 ➕ 🎮 Сборка', callback_data='sborka')
+bt_menu = InlineKeyboardButton(text='🔙 Назад в главное меню', callback_data='back_menu')
+bt_kat = ReplyKeyboardMarkup(resize_keyboard=True).add(bt_price).add(bt_remont).row(bt_sborka).insert(bt_upgrade).insert(bt_diag)\
+    .add(bt_menu)
 
 kb_dev = InlineKeyboardMarkup()
 kb_dev.insert(InlineKeyboardButton(text="Планшет", callback_data='device:Планшет'))

@@ -11,17 +11,13 @@ from aiogram.types import ParseMode, InlineKeyboardMarkup, InlineKeyboardButton,
 from back.keyboards import kb_dev, kb1
 from config import CHANNEL_ID
 from keyboards import bt_sec
-from main import bot, dp
+from main import bot, dp, generate_order_id
 
 button_cancel = types.InlineKeyboardButton('Отмена', callback_data='cancel')
 cancelButton = types.ReplyKeyboardMarkup(resize_keyboard=True).add(button_cancel)
 USER_DATA = {}
-order_id = 1
 
-def generate_order_id():
-    global order_id
-    order_id += 1
-    return f'{order_id:06}'
+
 
 @dp.callback_query_handler(text=['Меню'])
 async def main_menu(callback: types.CallbackQuery, state: FSMContext):
@@ -42,6 +38,7 @@ def register():
         confirm = State()
         dbconn = State()
 
+    @dp.message_handler(commands=['register'])
     @dp.callback_query_handler(text='register')
     @dp.message_handler(text='Оставить заявку на ремонт')
     async def register_order(callback: types.callback_query, state: FSMContext):
@@ -238,7 +235,7 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
                                        f'''Спасибо за заявку №{id_order}! В скором времени с вами свяжется менеджер.''',
                                        reply_markup=bt_sec)
             else:
-                await bot.send_message(USER_DATA[7], 'pizdec колбек не = юзер_дата ')
+                await bot.send_message(USER_DATA[7], 'Куда лезешь, админ')
         except sqlite3.Error as error:
             print('Ошибка при работе с SQLite:', error)
         finally:

@@ -41,6 +41,8 @@ def konsult():
         await state.finish()
 
     # Обработчик для начала обращения в службу технической поддержки
+    @dp.message_handler(commands=['konsult'])
+    @dp.callback_query_handler(text='konsult')
     @dp.message_handler(text='Техподдержка')
     async def answer_k(mess: types.Message, state: FSMContext):
 
