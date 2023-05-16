@@ -47,8 +47,8 @@ async def process_start_command(message: types.Message):
 async def update_status(message: types.Message, state: FSMContext):
     # Проверяем, что сообщение пришло из приватного чата с администратором
     #
-    # if message.chat.id != CHANNEL_ID:
-    #     return
+    if message.chat.id != CHANNEL_ID:
+        return
     print(message.chat.id)
     # Отправляем сообщение, запрашивая номер заказа
     await message.reply("Введите номер заказа для изменения статуса:")
@@ -106,7 +106,9 @@ async def process_order_status(callback_query: types.CallbackQuery):
     conn.commit()
 
     # Получаем информацию о пользователе
-    id_client = callback_query.from_user.id
+    que_id_client = "SELECT id_client FROM orders WHERE id_order=?"
+    cursor.execute(que_id_client, (order_id))
+    id_client = cursor.fetchone()[0]
     query = "SELECT order_status FROM status WHERE id_status = ?"
     cursor.execute(query, (new_status_id,))
     status_name = cursor.fetchone()[0]
@@ -129,7 +131,7 @@ konsult()
 register()
 # upgrade()
 
-@dp.message_handler(commands=['status'])
+@dp.message_handler(commands=['status'], chat_id=CHANNEL_ID)
 @dp.message_handler(text='Статус заказа')
 @dp.callback_query_handler(text='order_info')
 async def process_show_orders(callback_query: types.CallbackQuery):
@@ -161,16 +163,14 @@ async def process_get_data(callback_query: types.CallbackQuery):
     id_order = callback_query.data.split(':')[1]
     with sqlite3.connect('E:/sqlite3/Servigo') as conn:
         cursor = conn.cursor()
-        order_tp='''UPDATE Orders
+        cursor.execute('''UPDATE Orders
                 SET total_price = (
                     SELECT SUM(s.price)
                     FROM OrderServices AS os
                     JOIN Services AS s ON os.order_id = s.id_service
                     WHERE os.order_id = ?
                 )
-                WHERE id_order = ?'''
-        order_total = cursor.execute(order_tp, (id_order, id_order))
-        print(order_total)
+                WHERE id_order = ?''', (id_order, id_order))
         order_zp = '''SELECT Orders.id_order, Clients.tg_username, Clients.familiya_imya, Clients.phone, 
                 Orders.device_type, Orders.dev_name, Orders.issue, Orders.total_price, Status.order_status 
                 FROM Orders 
@@ -192,6 +192,7 @@ async def process_get_data(callback_query: types.CallbackQuery):
         await bot.send_message(callback_query.from_user.id, text=text)
     else:
         await bot.send_message(callback_query.from_user.id, text="Заказ не найден")
+        conn.close()
 
 
 @dp.callback_query_handler(text='my_orders')
@@ -276,27 +277,27 @@ async def process_answer(message: types.Message, state: FSMContext):
 
 # второй ответ не работает
 #
-async def show_services(message: types.Message):
-    conn = sqlite3.connect('E:/sqlite3/Servigo')
-    cursor = conn.cursor()
-
-    # Получаем данные из таблицы Services
-    query = "SELECT * FROM Services"
-    cursor.execute(query)
-    services = cursor.fetchall()
-
-    # Создаем список кнопок с названиями услуг
-    buttons = []
-    for service in services:
-        buttons.append([InlineKeyboardButton(service[1], callback_data=f'service:{service[1]}')])
-
-    # Создаем клавиатуру с кнопками
-    ser_but = InlineKeyboardMarkup(buttons)
-
-    # Отправляем сообщение с кнопками пользователю
-    await message.answer('Выберите услугу:', reply_markup=ser_but)
-
-    conn.close()
+# async def show_services(message: types.Message):
+#     conn = sqlite3.connect('E:/sqlite3/Servigo')
+#     cursor = conn.cursor()
+#
+#     # Получаем данные из таблицы Services
+#     query = "SELECT * FROM Services"
+#     cursor.execute(query)
+#     services = cursor.fetchall()
+#
+#     # Создаем список кнопок с названиями услуг
+#     buttons = []
+#     for service in services:
+#         buttons.append([InlineKeyboardButton(service[1], callback_data=f'service:{service[1]}')])
+#
+#     # Создаем клавиатуру с кнопками
+#     ser_but = InlineKeyboardMarkup(buttons)
+#
+#     # Отправляем сообщение с кнопками пользователю
+#     await message.answer('Выберите услугу:', reply_markup=ser_but)
+#
+#     conn.close()
 
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('service:'))
