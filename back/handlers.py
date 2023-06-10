@@ -1,22 +1,19 @@
 import sqlite3
-from aiogram import types
-from aiogram.dispatcher.filters import Command
-from aiogram.dispatcher.filters import ChatTypeFilter
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher import Dispatcher
-from aiogram.dispatcher.storage import FSMContextProxy
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InputFile, InlineKeyboardButton, InlineKeyboardMarkup
-from back.config import CHANNEL_ID, admins
+
+from back.config import CHANNEL_ID
 from back.form_kons import konsult
 from back.form_reg import register
+from back.status_act import StatusForm, update_status, process_order_id, process_order_status
 # from back.form_upgrade import upgrade
 # from form_reg import register
 from keyboards import bt_sec, kb1, bt_kat
 from main import bot, dp
-from texts import place, comp, virus, diag, uslugi, remont, start
+from texts import place, comp, diag, uslugi, remont, start
 
 
 @dp.message_handler(commands=['start'])
@@ -42,80 +39,6 @@ async def process_start_command(message: types.Message):
             conn.close()
 
 
-
-@dp.message_handler(commands=['status'], chat_type=[types.ChatType.GROUP, types.ChatType.SUPERGROUP])
-async def update_status(message: types.Message, state: FSMContext):
-    # Проверяем, что сообщение пришло из приватного чата с администратором
-    #
-    if message.chat.id != CHANNEL_ID:
-        return
-    print(message.chat.id)
-    # Отправляем сообщение, запрашивая номер заказа
-    await message.reply("Введите номер заказа для изменения статуса:")
-
-
-@dp.message_handler(chat_type=[types.ChatType.GROUP, types.ChatType.SUPERGROUP])
-async def process_order_status(message: types.Message):
-    # Получаем введенный номер заказа
-    order_id = message.text.strip()
-
-    # Проверяем, что введенный номер заказа является числом
-    if not order_id.isdigit():
-        await message.reply("Неверный формат номера заказа. Введите число.")
-        return
-
-    # Получаем текущий статус заказа из базы данных
-    conn = sqlite3.connect('E:/sqlite3/Servigo')
-    cursor = conn.cursor()
-    query = "SELECT id_status FROM Orders WHERE id_order=?"
-    cursor.execute(query, (order_id,))
-    current_status_id = cursor.fetchone()
-
-    # Проверяем, что заказ с указанным номером существует
-    if not current_status_id:
-        await message.reply(f"Заказ с номером {order_id} не найден.")
-        return
-
-    # Создаем кнопки с возможными статусами заказа
-    status_buttons = [
-        types.InlineKeyboardButton("Не начато", callback_data=f"status:{order_id}:1"),
-        types.InlineKeyboardButton("В процессе", callback_data=f"status:{order_id}:2"),
-        types.InlineKeyboardButton("Выполнено", callback_data=f"status:{order_id}:3")
-    ]
-
-    # Создаем InlineKeyboardMarkup с кнопками статусов
-    status_keyboard = types.InlineKeyboardMarkup(row_width=1)
-    status_keyboard.add(*status_buttons)
-
-    # Отправляем сообщение с кнопками статусов
-    await message.reply("Выберите новый статус заказа:", reply_markup=status_keyboard)
-
-
-@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('status:'))
-async def process_order_status(callback_query: types.CallbackQuery):
-    # Извлекаем номер заказа и новый статус из callback query
-    data = callback_query.data.split(':')
-    order_id = data[1]
-    new_status_id = data[2]
-
-    # Обновляем статус заказа в базе данных
-    conn = sqlite3.connect('E:/sqlite3/Servigo')
-    cursor = conn.cursor()
-    query = "UPDATE Orders SET id_status=? WHERE id_order=?"
-    cursor.execute(query, (new_status_id, order_id))
-    conn.commit()
-
-    # Получаем информацию о пользователе
-    que_id_client = "SELECT id_client FROM orders WHERE id_order=?"
-    cursor.execute(que_id_client, (order_id))
-    id_client = cursor.fetchone()[0]
-    query = "SELECT order_status FROM status WHERE id_status = ?"
-    cursor.execute(query, (new_status_id,))
-    status_name = cursor.fetchone()[0]
-    print(id_client)
-    await bot.send_message(id_client, text=f'Ваш заказ обновил свой статус: {status_name} 🌚')
-
-
 @dp.callback_query_handler(text=['menu'])
 async def main_menu(callback: types.CallbackQuery):
     await bot.send_message(callback.from_user.id, text='Выберите пункт меню 👇🏻', reply_markup=kb1)
@@ -129,37 +52,23 @@ async def back_to_menu(message: types.Message):
 
 konsult()
 register()
-# upgrade()
 
-@dp.message_handler(commands=['status'], chat_id=CHANNEL_ID)
+dp.register_message_handler(update_status, commands=['status'], chat_id=CHANNEL_ID)
+dp.register_message_handler(process_order_id, state=StatusForm.order_id, chat_id=CHANNEL_ID)
+dp.register_callback_query_handler(process_order_status,
+                                   lambda callback_query: callback_query.data.startswith('status:'),
+                                   state=StatusForm.new_status, chat_id=CHANNEL_ID)
+
+
+@dp.message_handler(commands=['status'])
 @dp.message_handler(text='Статус заказа')
 @dp.callback_query_handler(text='order_info')
-async def process_show_orders(callback_query: types.CallbackQuery):
-    id_client = callback_query.from_user.id
-    orders = await get_orders_for_client(id_client)  # await the coroutine
-    if orders != False:
-        buttons = [InlineKeyboardButton(str(order), callback_data=f"Заказ №:{order}") for order in orders]
-        keyboard = InlineKeyboardMarkup(row_width=2).add(*buttons)
-        await bot.send_message(id_client, "Выберите номер заказа:", reply_markup=keyboard)
-    else:
-        await bot.send_message(id_client, "😥 У Вас нет заказов.")
-
-
-async def get_orders_for_client(id_client):
-    with sqlite3.connect('E:/sqlite3/Servigo') as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM Orders WHERE id_client=?", (id_client,))
-        count = cursor.fetchone()[0]
-        if count > 0:
-            cursor.execute("SELECT id_order FROM Orders WHERE id_client=?", (id_client,))
-            orders = cursor.fetchall()
-            return [order[0] for order in orders]
-        else:
-            return False  # Возвращайте пустой список, если нет заказов
+async def status_start(callback: types.CallbackQuery):
+    await show_orders(callback)
 
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('Заказ №'))
-async def process_get_data(callback_query: types.CallbackQuery):
+async def status_get_data(callback_query: types.CallbackQuery):
     id_order = callback_query.data.split(':')[1]
     with sqlite3.connect('E:/sqlite3/Servigo') as conn:
         cursor = conn.cursor()
@@ -171,11 +80,11 @@ async def process_get_data(callback_query: types.CallbackQuery):
                     WHERE os.order_id = ?
                 )
                 WHERE id_order = ?''', (id_order, id_order))
-        order_zp = '''SELECT Orders.id_order, Clients.tg_username, Clients.familiya_imya, Clients.phone, 
-                Orders.device_type, Orders.dev_name, Orders.issue, Orders.total_price, Status.order_status 
-                FROM Orders 
-                JOIN Clients ON Orders.id_client = Clients.id_client 
-                JOIN Status ON Orders.id_status = Status.id_status 
+        order_zp = '''SELECT Orders.id_order, Clients.tg_username, Clients.familiya_imya, Clients.phone,
+                Orders.device_type, Orders.dev_name, Orders.issue, Orders.total_price, Status.order_status
+                FROM Orders
+                JOIN Clients ON Orders.id_client = Clients.id_client
+                JOIN Status ON Orders.id_status = Status.id_status
                 WHERE Orders.id_order = ?'''
         order_data = cursor.execute(order_zp, (id_order,)).fetchone()
     if order_data:
@@ -195,15 +104,68 @@ async def process_get_data(callback_query: types.CallbackQuery):
         conn.close()
 
 
-@dp.callback_query_handler(text='my_orders')
-async def process_my_orders(callback_query: types.CallbackQuery):
-    await process_show_orders(callback_query)
+async def show_orders(callback):
+    id_client = callback.from_user.id
+    orders = await orders_for_client(id_client)  # await the coroutine
+    if orders:
+        if isinstance(orders, list):
+            buttons = [InlineKeyboardButton(str(order), callback_data=f"Заказ №:{order}") for order in orders]
+            keyboard = InlineKeyboardMarkup(row_width=2).add(*buttons)
+            await bot.send_message(id_client, "Выберите номер заказа:", reply_markup=keyboard)
+        else:
+            await send_order_info(id_client, orders)
+    else:
+        await bot.send_message(id_client, "😥 У Вас нет заказов.")
 
 
-@dp.callback_query_handler(text='all_orders')
-async def process_all_orders(callback_query: types.CallbackQuery):
-    # здесь можно написать код для вывода всех заказов (если это нужно)
-    pass
+async def orders_for_client(id_client):
+    with sqlite3.connect('E:/sqlite3/Servigo') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Orders WHERE id_client=?", (id_client,))
+        count = cursor.fetchone()[0]
+        if count > 0:
+            cursor.execute("SELECT id_order FROM Orders WHERE id_client=?", (id_client,))
+            orders = cursor.fetchall()
+            if count > 1:
+                return [order[0] for order in orders]
+            else:
+                return orders[0][0]
+        else:
+            return False  # Возвращайте пустой список, если нет заказов
+
+
+async def send_order_info(id_client, order_id):
+    with sqlite3.connect('E:/sqlite3/Servigo') as conn:
+        cursor = conn.cursor()
+        cursor.execute('''UPDATE Orders
+                SET total_price = (
+                    SELECT SUM(s.price)
+                    FROM OrderServices AS os
+                    JOIN Services AS s ON os.order_id = s.id_service
+                    WHERE os.order_id = ?
+                )
+                WHERE id_order = ?''', (order_id, order_id))
+        order_zp = '''SELECT Orders.id_order, Clients.tg_username, Clients.familiya_imya, Clients.phone, 
+                Orders.device_type, Orders.dev_name, Orders.issue, Orders.total_price, Status.order_status 
+                FROM Orders 
+                JOIN Clients ON Orders.id_client = Clients.id_client 
+                JOIN Status ON Orders.id_status = Status.id_status 
+                WHERE Orders.id_order = ?'''
+        order_data = cursor.execute(order_zp, (order_id,)).fetchone()
+    if order_data:
+        text = f"Заявка на ремонт: {order_data[5]}:\n"
+        text += f"TG user name: @{order_data[1]}\n"
+        text += f"Номер заказа: {order_data[0]}\n"
+        if order_data[4] != 'ПК':
+            text += f"Название устройства: {order_data[5]}\n"
+        text += f"Описание проблемы: {order_data[6]}\n"
+        text += f"Фамилия и имя: {order_data[2]}\n"
+        text += f"Телефон: {order_data[3]}\n"
+        text += f"Статус заказа: {order_data[8]}\n"
+        text += f"Общая стоимость: {order_data[7]} ₽"
+        await bot.send_message(id_client, text=text)
+    else:
+        await bot.send_message(id_client, text="Заказ не найден")
 
 
 @dp.message_handler(chat_id=CHANNEL_ID)
@@ -270,9 +232,9 @@ async def get_vopros(message: types.Message, state: FSMContext):
 async def process_answer(message: types.Message, state: FSMContext):
     data = await state.get_data()
     question = data.get('question')
-    await bot.send_message(question.from_user.id, text=f'Ответ на ваш вопрос: {message.text}')
+    await bot.send_message(message.from_user.id, text=f'Ответ на ваш вопрос: {message.text}')
     await bot.send_message(CHANNEL_ID,
-                           text=f'Ответ на вопрос от пользователя {question.from_user.id}:\n{message.text}')
+                           text=f'Ответ на вопрос от пользователя {message.from_user.id}:\n{message.text}')
 
 
 # второй ответ не работает
@@ -374,6 +336,7 @@ async def kat_info(message: types.Message, state: FSMContext):
         case '🖥 ➕ 🎮 Сборка':
             await bot.send_message(message.from_user.id,
                                    text='Привозите свои комплектующие. Мы поможем вам собрать ПК! ')
+
 
 # @dp.message_handler(commands=['/orders'])
 # async def show_orders(message: types.Message):

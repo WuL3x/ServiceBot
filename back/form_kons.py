@@ -2,11 +2,9 @@ import time
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, ParseMode, \
-    ReplyKeyboardRemove, InlineKeyboardMarkup
-from aiogram.utils import markdown
 from aiogram.dispatcher.filters import Text
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.types import ReplyKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup
 
 from back.keyboards import bt_sec, bt_feed, kb1
 from config import CHANNEL_ID
@@ -47,7 +45,7 @@ def konsult():
     async def answer_k(mess: types.Message, state: FSMContext):
 
         await mess.answer("Пожалуйста, опишите свой вопрос/претензию полность",
-                                            reply_markup=cancelButton)
+                          reply_markup=cancelButton)
         ReplyKeyboardRemove()
         await mess.answer(
             "Выберите тип обращения:", reply_markup=bt_feed)
@@ -94,8 +92,3 @@ def konsult():
         # time.sleep(2)
         # await main_menu(message)
         await state.finish()
-
-
-
-
-

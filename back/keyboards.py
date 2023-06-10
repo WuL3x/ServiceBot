@@ -13,6 +13,7 @@ kb1.add(InlineKeyboardButton(text="Виды услуг", callback_data='katalog'
 kb1.add(InlineKeyboardButton(text="Статус заказа", callback_data='order_info'))
 kb1.add(InlineKeyboardButton(text='Где мы находимся?', callback_data='place'))
 kb1.add(InlineKeyboardButton(text='О компании', callback_data='company'))
+kb1.add(InlineKeyboardButton(text='Поделиться', switch_inline_query='https://t.me/ServigoServiceBot'))
 
 bt_feed = InlineKeyboardMarkup()
 bt_feed.insert(InlineKeyboardButton(text='❔ Вопрос', callback_data='feed:Вопрос'))

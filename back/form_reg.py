@@ -1,14 +1,15 @@
 import logging
 import time
-import uuid
+
 import sqlite3
+import re
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from back.keyboards import kb_dev, kb1
+from back.keyboards import kb_dev
 from config import CHANNEL_ID
 from keyboards import bt_sec
 from main import bot, dp, generate_order_id
@@ -16,7 +17,6 @@ from main import bot, dp, generate_order_id
 button_cancel = types.InlineKeyboardButton('Отмена', callback_data='cancel')
 cancelButton = types.ReplyKeyboardMarkup(resize_keyboard=True).add(button_cancel)
 USER_DATA = {}
-
 
 
 @dp.callback_query_handler(text=['Меню'])
@@ -104,8 +104,15 @@ def register():
 
     @dp.message_handler(state=RepairForm.name)
     async def process_name(message: types.Message, state: FSMContext):
+        full_name = message.text.strip()
+        # Проверяем, что фамилия и имя начинаются с заглавной буквы
+        if not full_name.istitle():
+            await message.reply(
+                "Фамилия и имя должны начинаться с заглавной буквы. Пожалуйста, введите правильные данные.")
+            return
         async with state.proxy() as data:
-            data['name'] = message.text
+            data['name'] = full_name
+            await state.update_data(data)
         phone_keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         share = KeyboardButton(text="Отправить контакт", request_contact=True)
         phone_keyboard.add(share).row(button_cancel)
@@ -118,7 +125,13 @@ def register():
         if message.contact:
             phone = message.contact.phone_number
         else:
-            phone = message.text
+            phone = message.text.strip()
+
+            # Проверяем, что номер телефона соответствует шаблону "+79123456789"
+            if not re.match(r"\+\d{11}", phone):
+                await message.reply(
+                    "Номер телефона должен начинаться с +7. Пожалуйста, введите правильный номер.")
+                return
 
         async with state.proxy() as data:
             data['phone'] = phone
@@ -179,8 +192,10 @@ def register():
             kb_chat = InlineKeyboardMarkup()
             kb_chat.add(InlineKeyboardButton(text="Перейти в чат",
                                              url=f"t.me/{callback.from_user.username}"))
-            kb_chat.add(InlineKeyboardButton(text='Подтвердить заявку', callback_data=f"confirm_order:{data['id_order']}:yes"))
-            kb_chat.add(InlineKeyboardButton(text='Отменить заявку', callback_data=f"confirm_order:{data['id_order']}:no"))
+            kb_chat.add(
+                InlineKeyboardButton(text='Подтвердить заявку', callback_data=f"confirm_order:{data['id_order']}:yes"))
+            kb_chat.add(
+                InlineKeyboardButton(text='Отменить заявку', callback_data=f"confirm_order:{data['id_order']}:no"))
 
             # Отправляем сообщение на заданный вами чат или группу в Telegram
             await bot.send_message(CHANNEL_ID, text, reply_markup=kb_chat)
@@ -211,19 +226,19 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
                 # вставка данных в таблицу Clients
                 else:
                     insert_client = "INSERT INTO Clients (id_client, tg_username,  familiya_imya, phone) VALUES (?," \
-                                          " ?, ?, ?)"
+                                    " ?, ?, ?)"
                     cursor.execute(insert_client,
                                    (
                                        id_client, user_name, name, phone))
 
                 if device == 'ПК':
-                    insert_order = "INSERT INTO Orders (id_order, id_client, issue, id_status, dev_name, device_type)"\
-                                         "VALUES (?, ?, ?, ?, ?, ?)"
+                    insert_order = "INSERT INTO Orders (id_order, id_client, issue, id_status, dev_name, device_type)" \
+                                   "VALUES (?, ?, ?, ?, ?, ?)"
                     cursor.execute(insert_order, (id_order, id_client, issue, 1, 'ПК', device))
 
                 else:
-                    insert_client = "INSERT INTO Orders (id_order, id_client, issue, id_status, dev_name, device_type)"\
-                                          "VALUES (?, ?, ?, ?, ?, ?)"
+                    insert_client = "INSERT INTO Orders (id_order, id_client, issue, id_status, dev_name, device_type)" \
+                                    "VALUES (?, ?, ?, ?, ?, ?)"
                     cursor.execute(insert_client,
                                    (
                                        id_order, id_client, issue, 1, dev_name, device))
@@ -236,6 +251,7 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
                                        reply_markup=bt_sec)
             else:
                 await bot.send_message(USER_DATA[7], 'Куда лезешь, админ')
+                await main_menu(callback)
         except sqlite3.Error as error:
             print('Ошибка при работе с SQLite:', error)
         finally:
@@ -251,7 +267,7 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
         await bot.send_message(USER_DATA[7],
                                f'''⛔ Упс! Заявка №{id_order} была отменена.''')
         time.sleep(2)
-        await main_menu(callback, state)
+        await main_menu(callback)
 
     # @dp.callback_query_handler(state=RepairForm.dbconn)
     # async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
