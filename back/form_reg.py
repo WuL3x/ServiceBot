@@ -36,7 +36,7 @@ def register():
         name = State()
         phone = State()
         confirm = State()
-        dbconn = State()
+
 
     @dp.message_handler(commands=['register'])
     @dp.callback_query_handler(text='register')
@@ -188,6 +188,9 @@ def register():
             logging.debug(f"Processing callback query with state {await state.get_state()}")
             USER_DATA = [data['device'], data['user_name'], data['id_order'], data['dev_name'], data['issue'],
                          data['name'], data['phone'], data['id_client']]
+            await bot.send_message(callback.from_user.id,
+                                   f'''Спасибо за заявку! В скором времени мы ее рассмотрим.''',
+                                   reply_markup=bt_sec)
 
             kb_chat = InlineKeyboardMarkup()
             kb_chat.add(InlineKeyboardButton(text="Перейти в чат",
@@ -250,8 +253,8 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
                                        f'''Спасибо за заявку №{id_order}! В скором времени с вами свяжется менеджер.''',
                                        reply_markup=bt_sec)
             else:
-                await bot.send_message(USER_DATA[7], 'Куда лезешь, админ')
-                await main_menu(callback)
+                await bot.send_message(USER_DATA[7], 'Ошибка доступа')
+                await main_menu(callback, state)
         except sqlite3.Error as error:
             print('Ошибка при работе с SQLite:', error)
         finally:
@@ -267,151 +270,5 @@ async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
         await bot.send_message(USER_DATA[7],
                                f'''⛔ Упс! Заявка №{id_order} была отменена.''')
         time.sleep(2)
-        await main_menu(callback)
+        await main_menu(callback,state)
 
-    # @dp.callback_query_handler(state=RepairForm.dbconn)
-    # async def agree_to_db(callback: types.CallbackQuery, state: FSMContext):
-    #     global conn, cursor
-    #     async with state.proxy() as data:
-    #         if callback.data.split(':')[1] == 'yes':
-    #             print(data)
-    #             try:
-    #                 conn = sqlite3.connect('E:/sqlite3/Servigo')
-    #                 cursor = conn.cursor()
-    #                 tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-    #                 print(tables)
-    #
-    #                 # вставка данных в таблицу Clients
-    #                 id_device_type = cursor.execute(
-    #                     f"SELECT id_device from Device_type dt WHERE name == '{data['device']}'").fetchone()[0]
-    #
-    #                 print(id_device_type)
-    #                 if data['device'] == 'ПК':
-    #                     insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-    #                                           "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-    #                     cursor.execute(insert_client_query,
-    #                                    (data['user_name'], 'ПК', data['device'], data['name'], data['phone'], id_device_type))
-    #
-    #                 else:
-    #                     insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-    #                                           "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-    #                     cursor.execute(insert_client_query,
-    #                                    (
-    #                                        data['user_name'], data['dev_name'], data['device'], data['name'],
-    #                                        data['phone'],
-    #                                        id_device_type))
-    #
-    #                 # вставка данных в таблицу Orders
-    #                 insert_order_query = "INSERT INTO Orders (id_order, id_client, issue, id_status) VALUES (?, ?, ?, ?)"
-    #                 cursor.execute(insert_order_query, (data['id_order'], data['id_client'], data['issue'], 0))
-    #
-    #                 conn.commit()
-    #                 print('Данные переданы')
-    #                 await bot.send_message(callback.from_user.id,
-    #                                        "Спасибо за заявку! В скором времени с вами свяжется менеджер",
-    #                                        reply_markup=bt_sec)
-    #             except sqlite3.Error as error:
-    #                 print('Ошибка при работе с SQLite:', error)
-    #             finally:
-    #                 if conn:
-    #                     cursor.close()
-    #                     conn.close()
-    #     await state.finish()
-
-# @dp.callback_query_handler(text='agree', chat_id=CHANNEL_ID, state=RepairForm.dbconn)
-# async def order_agree(callback: types.CallbackQuery, state: FSMContext):
-#     global conn, cursor
-#     print("Button clicked!")
-#     data = await state.get_data()
-#     print(data)
-#     try:
-#         conn = sqlite3.connect('E:/sqlite3/Servigo')
-#         cursor = conn.cursor()
-#         tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-#         print(tables)
-#
-#         # вставка данных в таблицу Clients
-#         id_device_type = cursor.execute(
-#             f"SELECT id_device from Device_type dt WHERE name == '{data['device']}'").fetchone()[0]
-#
-#         print(id_device_type)
-#         if data['device'] == 'ПК':
-#             insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-#                                   "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-#             cursor.execute(insert_client_query,
-#                            (data['user_name'], 'ПК', data['device'], data['name'], data['phone'],
-#                             id_device_type))
-#
-#         else:
-#             insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-#                                   "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-#             cursor.execute(insert_client_query,
-#                            (
-#                                data['user_name'], data['dev_name'], data['device'], data['name'],
-#                                data['phone'],
-#                                id_device_type))
-#
-#         # вставка данных в таблицу Orders
-#         insert_order_query = "INSERT INTO Orders (id_order, id_client, issue, id_status) VALUES (?, ?, ?, ?)"
-#         cursor.execute(insert_order_query, (data['id_order'], data['id_client'], data['issue'], 0))
-#
-#         conn.commit()
-#         print('Данные переданы')
-#         await bot.send_message(callback.from_user.id,
-#                                "Спасибо за заявку! В скором времени с вами свяжется менеджер",
-#                                reply_markup=bt_sec)
-#     except sqlite3.Error as error:
-#         print('Ошибка при работе с SQLite:', error)
-#     finally:
-#         if conn:
-#             cursor.close()
-#             conn.close()
-#     await state.finish()
-#
-# @dp.callback_query_handler(text='refuse')
-# async def order_refuse(callback: types.CallbackQuery):
-#     bot.send_message(callback.from_user.id, 'Вам отказали')
-
-# @dp.callback_query_handler(text='agree', state=RepairForm.confirm)
-# async def dbconnection(callback: types.CallbackQuery, state: FSMContext):
-#     global conn, cursor
-#     try:
-#         conn = sqlite3.connect('E:/sqlite3/Servigo')
-#         cursor = conn.cursor()
-#         tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-#         print(tables)
-#         async with state.proxy() as data:
-#             data = await state.get_data()
-#             # вставка данных в таблицу Clients
-#             print(data['device'])
-#             id_device_type = cursor.execute(
-#                     f"SELECT id_device from Device_type dt where name == '{data['device']}'").fetchone()[0]
-#             print(id_device_type)
-#             if data['device'] == 'ПК':
-#                 insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-#                                       "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-#                 cursor.execute(insert_client_query,
-#                                (data['user_name'], 'ПК', data['device'], data['name'], data['phone'],
-#                                 id_device_type))
-#
-#             else:
-#                 insert_client_query = "INSERT INTO Clients (tg_username, model, device_type, familiya_imya, phone, " \
-#                                       "id_device_type) VALUES (?, ?, ?, ?, ?, ?)"
-#                 cursor.execute(insert_client_query,
-#                                (
-#                                    data['user_name'], data['dev_name'], data['device'], data['name'],
-#                                    data['phone'],
-#                                    id_device_type))
-#
-#             # вставка данных в таблицу Orders
-#             insert_order_query = "INSERT INTO Orders (id_order, id_client, issue, id_status) VALUES (?, ?, ?, ?)"
-#             cursor.execute(insert_order_query, (data['id_order'], data['id_client'], data['issue'], 0))
-#
-#             conn.commit()
-#             print('Данные переданы')
-#     except sqlite3.Error as error:
-#         print('Ошибка при работе с SQLite:', error)
-#     finally:
-#         if conn:
-#             cursor.close()
-#             conn.close()

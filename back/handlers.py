@@ -141,7 +141,7 @@ async def send_order_info(id_client, order_id):
                 SET total_price = (
                     SELECT SUM(s.price)
                     FROM OrderServices AS os
-                    JOIN Services AS s ON os.order_id = s.id_service
+                    JOIN Services AS s ON os.service_id = s.id_service
                     WHERE os.order_id = ?
                 )
                 WHERE id_order = ?''', (order_id, order_id))
@@ -237,31 +237,6 @@ async def process_answer(message: types.Message, state: FSMContext):
                            text=f'Ответ на вопрос от пользователя {message.from_user.id}:\n{message.text}')
 
 
-# второй ответ не работает
-#
-# async def show_services(message: types.Message):
-#     conn = sqlite3.connect('E:/sqlite3/Servigo')
-#     cursor = conn.cursor()
-#
-#     # Получаем данные из таблицы Services
-#     query = "SELECT * FROM Services"
-#     cursor.execute(query)
-#     services = cursor.fetchall()
-#
-#     # Создаем список кнопок с названиями услуг
-#     buttons = []
-#     for service in services:
-#         buttons.append([InlineKeyboardButton(service[1], callback_data=f'service:{service[1]}')])
-#
-#     # Создаем клавиатуру с кнопками
-#     ser_but = InlineKeyboardMarkup(buttons)
-#
-#     # Отправляем сообщение с кнопками пользователю
-#     await message.answer('Выберите услугу:', reply_markup=ser_but)
-#
-#     conn.close()
-
-
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('service:'))
 async def show_service_info(callback: types.CallbackQuery):
     conn = sqlite3.connect('E:/sqlite3/Servigo')
@@ -299,12 +274,6 @@ async def all_message(callback: types.CallbackQuery, state: FSMContext):
             await bot.send_photo(callback.from_user.id, InputFile("Media/gorshok.jpg"), caption=comp,
                                  reply_markup=bt_sec, )
 
-            # time.sleep(1)
-            # await main_menu(callback)
-
-
-# Вывод значений таблицы Sevices для ознакомления
-
 
 @dp.message_handler(text_contains='', state='*')
 async def kat_info(message: types.Message, state: FSMContext):
@@ -325,103 +294,10 @@ async def kat_info(message: types.Message, state: FSMContext):
         case '💉 Диагностика и профилактика':
             await bot.send_photo(message.from_user.id, InputFile('Media/diag.jpg'), caption=diag, reply_markup=bt_reg)
         case '📈 Апгрейд ПК':
-            await bot.send_message(message.from_user.id, text='Ну тут нужно чекать в ДНС цены.',
+            await bot.send_message(message.from_user.id, text='На данный момент услуга не доступна',
                                    reply_markup=bt_uprgade)
-        # case 'Удаление вирусов':
-        #     await bot.send_photo(message.from_user.id, InputFile("Media/virus.jpg"), caption=virus)
-        # case 'Если просто не включается компьютер?':
-        #     await bot.send_message(message.from_user.id,
-        #                            text='А может ну его... Компы эти сложные, а?\n и кстати, не пишите сюда больше')
-        #     await bot.send_message(message.from_user.id, text='Бан по причине тупоголовый')
         case '🖥 ➕ 🎮 Сборка':
             await bot.send_message(message.from_user.id,
                                    text='Привозите свои комплектующие. Мы поможем вам собрать ПК! ')
 
 
-# @dp.message_handler(commands=['/orders'])
-# async def show_orders(message: types.Message):
-#     # Проверяем, что сообщение пришло из админ-чата
-#     if message.chat.id != CHANNEL_ID:
-#         return
-#
-#     # Подключаемся к базе данных
-#     conn = sqlite3.connect('E:/sqlite3/Servigo')
-#     cursor = conn.cursor()
-#
-#     # Получаем все заказы из таблицы Orders
-#     query = "SELECT * FROM Orders"
-#     cursor.execute(query)
-#     orders = cursor.fetchall()
-#
-#     # Создаем список кнопок с возможными статусами
-#     status_buttons = []
-#     query = "SELECT * FROM status"
-#     cursor.execute(query)
-#     statuses = cursor.fetchall()
-#     for status in statuses:
-#         status_buttons.append([types.InlineKeyboardButton(status[1], callback_data=f'status:{status[0]}')])
-#
-#     # Создаем кнопку "назад"
-#     back_button = types.InlineKeyboardButton('Назад', callback_data='back')
-#
-#     # Создаем InlineKeyboardMarkup с кнопками статусов и кнопкой "назад"
-#     status_keyboard = types.InlineKeyboardMarkup(status_buttons)
-#     status_keyboard.add(back_button)
-#
-#     # Отправляем сообщение с заказами и кнопками статусов
-#     for order in orders:
-#         status_id = order[5]
-#         query = "SELECT name FROM status WHERE id_status=?"
-#         cursor.execute(query, (status_id,))
-#         status_name = cursor.fetchone()[0]
-#         status_text = f'Статус: {status_name}\n'
-#         order_text = f'{order[1]} {order[2]} ({order[3]})\n{order[4]}\n{status_text}'
-#         await message.reply(order_text, reply_markup=status_keyboard)
-#
-#     # Закрываем соединение с базой данных
-#     conn.close()
-#
-#
-# # Обрабатываем нажатия на кнопки статусов
-# @dp.callback_query_handler(lambda c: c.data and c.data.startswith('status:'))
-# async def change_order_status(callback: types.CallbackQuery):
-#     # Проверяем, что сообщение пришло из админ-чата
-#     if callback.message.chat.id != CHANNEL_ID:
-#         return
-#
-#     # Получаем id заказа и id статуса из callback_data
-#     order_id = callback.message.text.split('\n')[0]
-#     status_id = int(callback.data.split(':')[1])
-#
-#     # Подключаемся к базе данных
-#     conn = sqlite3.connect('E:/sqlite3/Servigo')
-#     cursor = conn.cursor()
-#
-#     # Обновляем статус заказа в таблице Orders
-#     query = "UPDATE Orders SET id_status=? WHERE id=?"
-#     cursor.execute(query, (status_id, order_id))
-#     conn.commit()
-#
-#     # Получаем имя статуса из таблицы status
-#     query = "SELECT name FROM status WHERE id_status=?"
-#     cursor.execute(query, (status_id,))
-#     status_name = cursor.fetchone()[0]
-#
-#     # Отправляем сообщение об успешном обновлении статуса
-#     await callback.answer(f'Статус заказа изменен на "{status_name}"')
-#
-#     # Закрываем соединение с базой данных
-#     conn.close()
-#
-#     # После обновления статуса заказа, отправляем обновленный список заказов с кнопками статусов
-#     await show_orders(callback.message)
-
-
-# Обрабатываем нажатие на кнопку "Назад"
-# @dp.callback_query_handler(lambda c: c.data == 'back')
-# async def back_to_orders(callback: types.CallbackQuery):
-#     # Проверяем, что сообщение пришло из админ-чата
-#     if callback.message.chat.id != CHANNEL_ID:
-#         return
-#     # После нажатия на кнопку "назад", отправляем список заказов с кнопками статусов
-#     await show_orders(callback.message)
